@@ -2,8 +2,12 @@
 name = "happy-ip-scanner"
 version = "0.1.0"
 edition = "2024"
-authors = ["Happy IP Scanner Contributors"]
+authors = ["Nikhil Akki"]
 description = "A fast, friendly, cross-platform IP and port scanner in Rust (Angry IP Scanner port)"
+license = "MIT"
+repository = "https://github.com/nikhilakki/happy-ip-scanner"
+homepage = "https://github.com/nikhilakki/happy-ip-scanner"
+readme = "README.md"
 
 [dependencies]
 # Async Runtime & Networking

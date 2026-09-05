@@ -1,137 +1,156 @@
 # ⚡ Happy IP Scanner
 
-A fast, friendly, cross-platform IP address and port scanner written in **Rust**, inspired by and faithfully porting the classic **Angry IP Scanner**.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/rust-2024%20edition-orange.svg)](https://www.rust-lang.org)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)]()
+[![GitHub Repo](https://img.shields.io/badge/GitHub-nikhilakki%2Fhappy--ip--scanner-181717?logo=github)](https://github.com/nikhilakki/happy-ip-scanner)
 
-Happy IP Scanner features both a **modern Desktop GUI** (powered by `egui`) and an **ultra-fast command-line interface (CLI)**, designed for network administrators, penetration testers, and curious developers.
+A blazing-fast, friendly, cross-platform IP address and port scanner written in **Rust**, inspired by and faithfully porting the classic **Angry IP Scanner**.
+
+**Happy IP Scanner** features both a modern, native **Desktop GUI** (powered by [`egui`](https://github.com/emilk/egui)) and a high-performance **Command-Line Interface (CLI)** powered by [`tokio`](https://tokio.rs).
 
 ---
 
-## ✨ Features
+## ✨ Key Features
 
-- 🖥️ **Modern Desktop GUI**:
-  - Clean, responsive interface matching Angry IP Scanner's layout and workflow.
-  - Interactive table with real-time streaming results and status indicators (🟢 Alive with open ports, 🔵 Alive, 🔴 Dead).
-  - One-click **Local Subnet Auto-Detection** (identifies your active network adapter and auto-populates the `/24` subnet).
-  - Quick column sorting (by IP, Ping RTT, Hostname, Ports, MAC Address, Vendor).
-  - Instant search and filtering (search by IP, hostname, vendor, or toggle "Show alive only").
-  - Right-click context menu: open in web browser (`http://` or `https://`), copy IP or hostname to clipboard.
+- 🖥️ **Modern Native Desktop GUI**:
+  - Clean, responsive interface matching Angry IP Scanner's familiar layout.
+  - **Auto Subnet Detection**: Automatically identifies your active network interface on launch and primes your local subnet (e.g. `192.168.1.1` to `192.168.1.254`).
+  - **Live Streaming Results Table**: Non-blocking asynchronous updates with color-coded status badges (🟢 Alive with open ports, 🔵 Alive, 🔴 Dead).
+  - **Instant Search & Filter**: Filter results in real-time by IP, hostname, vendor, or toggle "Show alive only".
+  - **Column Sorting**: Click any header to sort by IP address, ping latency, hostname, open port count, MAC, or vendor.
+  - **Context Menu**: Right-click any row to open open web services directly in your browser (`http://` / `https://`) or copy IPs/hostnames to your clipboard.
+  - **Preferences Dialog**: Easily configure thread concurrency (up to 500+ workers), timeouts, default ports, and toggle individual fetchers.
+  - **Exporting**: Save scan reports to **CSV**, **JSON**, or **TXT** using native file dialogs.
+
 - ⚡ **Ultra-Fast Asynchronous Engine**:
-  - Powered by **Tokio** with configurable worker concurrency (default 64 threads, supports 500+ concurrent probes).
-  - Scans typical `/24` subnets (254 hosts) in just a couple of seconds.
+  - Multi-threaded asynchronous scanning built on **Tokio** with configurable worker concurrency.
+  - Scans an entire `/24` subnet (254 hosts) with port scanning in just seconds.
+
 - 🎯 **Flexible Target Modes**:
-  - **IP Range**: e.g. `192.168.1.1` to `192.168.1.254` or `192.168.1.1-254`.
-  - **Netmask / CIDR**: e.g. `192.168.1.0/24`, `/16`, `/28`, etc.
-  - **Random IPs**: Scan $N$ random IPv4 addresses across the Internet.
-  - **Single IP / Hostnames**: e.g. `example.com` or `127.0.0.1`.
+  - **IP Range**: e.g. `192.168.1.1` to `192.168.1.254` or short format `192.168.1.1-254`.
+  - **Subnet / CIDR**: e.g. `192.168.1.0/24`, `/16`, `/28`, etc.
+  - **Random IPs**: Generate and scan $N$ random IPv4 addresses across the Internet.
+  - **Single IP / Hostnames**: e.g. `1.1.1.1` or `scanme.nmap.org`.
+
 - 🔍 **Liveness Pingers & Probes**:
-  - **TCP Port Ping**: Fast, non-root liveness detection that works across all operating systems without requiring root/admin privileges.
-  - **Combined Ping**: TCP connection attempt with ICMP ping fallback.
-  - **Always Scan**: Force port scanning across all hosts regardless of ping response.
-- 🚪 **Port Scanner**:
-  - Support for comma-separated lists and ranges (e.g. `80, 443, 22, 8000-8010`).
-  - Concurrent TCP port checks.
+  - **TCP Port Ping**: Fast, non-root liveness detection that works across macOS, Linux, and Windows without requiring sudo/admin privileges.
+  - **Combined Mode**: TCP connection attempt with ICMP ping fallback.
+  - **Always Scan Mode**: Force port scanning across all targets regardless of ping response.
+
+- 🚪 **Open Port Scanner**:
+  - Support for port lists and hyphenated ranges: `80, 443, 22, 8000-8010, 8080`.
+  - Concurrent TCP connect probes per host.
+
 - 🏷️ **Information Fetchers**:
   - **Reverse DNS**: Asynchronous hostname resolution.
-  - **MAC Address & OUI Vendor**: Local ARP cache inspection + built-in vendor identification (Apple, Cisco, Intel, Raspberry Pi, TP-Link, Google, etc.).
-  - **Web Title Grabber**: Extracts HTTP `<title>` or `Server:` headers for web servers.
-- 💾 **Export Formats**:
-  - Export to **CSV**, **JSON**, and **TXT** directly from the GUI or CLI.
+  - **MAC Address & OUI Vendor**: Local ARP cache inspection + built-in IEEE OUI vendor identification (Apple, Cisco, Intel, Raspberry Pi, TP-Link, Google, Ubiquiti, etc.).
+  - **Web Title & Banner Grabber**: Lightweight HTTP GET parser that extracts HTML `<title>` tags and `Server:` banners from open web ports.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Installation & Setup
 
 ### Prerequisites
 
-- [Rust toolchain](https://rustup.rs/) (1.80+ recommended)
+- [Rust toolchain](https://rustup.rs/) (version 1.80+ recommended)
 
-### Build & Install
+### Build from Source
 
 ```bash
-git clone https://github.com/dgeek/happyipscanner.git
-cd happyipscanner
+# Clone repository
+git clone https://github.com/nikhilakki/happy-ip-scanner.git
+cd happy-ip-scanner
 
 # Build optimized release binary
 cargo build --release
 
-# The binary will be located at:
-# ./target/release/happy-ip-scanner
+# The binary will be available at:
+./target/release/happy-ip-scanner
+```
+
+### Install via Cargo
+
+```bash
+cargo install --git https://github.com/nikhilakki/happy-ip-scanner.git
 ```
 
 ---
 
 ## 💻 Desktop GUI Mode
 
-To launch the desktop GUI application, run without arguments:
+To launch the GUI, run `happy-ip-scanner` without arguments or pass `--gui`:
 
 ```bash
-cargo run
+happy-ip-scanner
 # or
-./target/release/happy-ip-scanner
+happy-ip-scanner --gui
 ```
 
-You can also explicitly pass `--gui`:
+### GUI Highlights
 
-```bash
-./target/release/happy-ip-scanner --gui
-```
-
-### GUI Shortcuts & Controls
-
-- **Start / Stop**: Click the green **▶ Start** button (or press Space/Enter). Click **⏹ Stop** at any time to halt an active scan.
-- **Local Subnet**: Click **📍 Local Subnet** to auto-fill your current network range.
-- **Preferences (⚙)**: Configure thread concurrency, ping timeouts, default ports, and enable/disable fetchers.
-- **Export (💾)**: Export results to CSV, JSON, or TXT file via native file dialog.
-- **Right-Click Row**: Access options to open open web ports directly in your default browser or copy IP addresses.
+| Feature | Description |
+|---|---|
+| **Start / Stop** | Click **▶ Start** to scan. Turns into **⏹ Stop** to pause or cancel mid-scan. |
+| **📍 Local Subnet** | Automatically populates the input fields with your current active network range. |
+| **Netmask Dropdown** | Switch between `/24` (254 hosts), `/16` (65534 hosts), `/28` (14 hosts), etc. |
+| **⚙ Preferences** | Configure concurrency (1–500 threads), socket timeouts, and toggle fetchers. |
+| **💾 Export** | Export results to CSV, JSON, or TXT file via native file dialog. |
+| **Right-Click Context** | Open web services in browser (`http://` or `https://`) or copy host details. |
 
 ---
 
-## 📟 CLI Mode
+## 📟 Command-Line Interface (CLI) Mode
 
-Happy IP Scanner automatically switches to CLI mode when you pass target arguments:
+When targets or CLI options are provided, Happy IP Scanner runs in headless CLI mode:
 
-### Basic Scan
-
-Scan a local `/24` subnet:
-
+### 1. Scan a Subnet (CIDR)
 ```bash
 happy-ip-scanner 192.168.1.0/24
 ```
 
-Scan an IP range:
-
+### 2. Scan an IP Range
 ```bash
 happy-ip-scanner 192.168.1.1-254
 ```
 
-### Custom Ports & Higher Concurrency
-
-Scan specific ports with 128 worker threads and 500ms timeout:
-
+### 3. Custom Ports & Concurrency
+Scan specific ports using 128 worker threads and a 500ms timeout:
 ```bash
-happy-ip-scanner 192.168.1.0/24 -p 80,443,22,8080,3000 -t 128 --timeout 500
+happy-ip-scanner 192.168.1.0/24 -p 80,443,22,8080 -t 128 --timeout 500
 ```
 
-### Show Only Alive Hosts
-
+### 4. Show Only Alive Hosts
 ```bash
 happy-ip-scanner 192.168.1.0/24 -a
 ```
 
-### Export to CSV or JSON
-
+### 5. Export to CSV, JSON, or TXT
 ```bash
-happy-ip-scanner 192.168.1.0/24 -o scan_results.csv -f csv
-happy-ip-scanner 192.168.1.0/24 -o scan_results.json -f json
+happy-ip-scanner 192.168.1.0/24 -o results.csv -f csv
+happy-ip-scanner 192.168.1.0/24 -o results.json -f json
+happy-ip-scanner 192.168.1.0/24 -o alive.txt -f txt -a
 ```
 
-### Scan Random Internet IPs
-
+### 6. Scan Random Internet Targets
 ```bash
-happy-ip-scanner --random 100 -p 80,443 -a
+happy-ip-scanner --random 50 -p 80,443 -a
 ```
 
-### Full CLI Options
+### Sample CLI Output
+
+```
+⚡ Happy IP Scanner v0.1.0
+🎯 Scanning 1 hosts | Ports: [80, 443] | Concurrency: 64 | Timeout: 1500ms
+
+╭─────────┬────────────┬────────┬─────────────────┬────────────┬─────────────┬────────┬───────────────────────╮
+│ Status  ┆ IP Address ┆ Ping   ┆ Hostname        ┆ Open Ports ┆ MAC Address ┆ Vendor ┆ Web / Banner          │
+╞═════════╪════════════╪════════╪═════════════════╪════════════╪═════════════╪════════╪═══════════════════════╡
+│ ● ALIVE ┆ 1.1.1.1    ┆ 11.4ms ┆ one.one.one.one ┆ 80, 443    ┆ -           ┆ -      ┆ 301 Moved Permanently │
+╰─────────┴────────────┴────────┴─────────────────┴────────────┴─────────────┴────────┴───────────────────────╯
+```
+
+### CLI Reference
 
 ```
 Usage: happy-ip-scanner [OPTIONS] [TARGET]
@@ -158,28 +177,52 @@ Options:
 
 ---
 
-## 🛠️ Architecture
+## 🏗️ Architecture
 
 ```
 src/
-├── main.rs                 # Application entrypoint (dispatches to GUI or CLI)
-├── cli.rs                  # CLI argument parsing, progress bar & colored table output
-├── export.rs               # CSV, JSON, and TXT exporter
-├── engine/                 # Core scanning engine
-│   ├── ip_range.rs         # Range iterator, CIDR parsing & auto-subnet detection
+├── main.rs                 # Entrypoint: dispatches to GUI or CLI mode
+├── cli.rs                  # CLI parser, progress indicator, and table formatting
+├── export.rs               # CSV, JSON, and plain text export handlers
+├── engine/                 # Scanning engine
+│   ├── ip_range.rs         # IP range generator, CIDR parser, local network detector
 │   ├── pinger.rs           # TCP port & ICMP liveness probes
 │   ├── port_scanner.rs     # Concurrent TCP port scan & port range parser
-│   ├── arp.rs              # System ARP cache MAC lookup
-│   ├── vendor.rs           # IEEE OUI MAC vendor database
+│   ├── arp.rs              # System ARP cache MAC discovery
+│   ├── vendor.rs           # IEEE OUI MAC vendor lookup database
 │   ├── web_banner.rs       # HTTP web title and server header grabber
 │   └── scanner.rs          # Asynchronous scan coordinator & worker pool
 └── gui/                    # egui / eframe desktop application
-    ├── app.rs              # Main GUI window, controls & results table
+    ├── app.rs              # Main GUI window, controls, table & context menu
     └── preferences.rs      # User settings & scanning preferences
 ```
 
 ---
 
-## 📜 License
+## 🧪 Testing
 
-MIT License.
+Run the automated test suite:
+
+```bash
+cargo test
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions, issues, and feature requests are welcome!
+
+1. Fork the project on GitHub: [github.com/nikhilakki/happy-ip-scanner](https://github.com/nikhilakki/happy-ip-scanner)
+2. Create your feature branch (`git checkout -b feat/my-new-feature`)
+3. Commit your changes (`git commit -am 'feat: add some feature'`)
+4. Push to the branch (`git push origin feat/my-new-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+
+Copyright (c) 2026 [Nikhil Akki](https://github.com/nikhilakki).
