@@ -9,6 +9,12 @@ updates:
     commit-message:
       prefix: "chore(deps)"
     groups:
+      # eframe, egui, and egui_extras are version-locked and must move together.
+      egui:
+        patterns:
+          - "eframe"
+          - "egui*"
+          - "epaint*"
       cargo-minor-and-patch:
         update-types:
           - "minor"
@@ -21,3 +27,11 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"
+    ignore:
+      # The MSRV job pins dtolnay/rust-toolchain@1.88 on purpose; it must track
+      # rust-version in Cargo.toml, not the newest Rust release.
+      - dependency-name: "dtolnay/rust-toolchain"
