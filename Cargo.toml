@@ -17,7 +17,7 @@ exclude = [".github/", ".editorconfig", "TODO.md"]
 # Async Runtime & Networking
 tokio = { version = "1.43", features = ["rt-multi-thread", "macros", "net", "time", "sync", "process", "signal", "io-util", "fs"] }
 ipnet = "2.11"
-dns-lookup = "2.0"
+dns-lookup = "4.0"
 local-ip-address = "0.6"
 
 # Desktop GUI (egui / eframe); `persistence` stores preferences and window geometry between runs
