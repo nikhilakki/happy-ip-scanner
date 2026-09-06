@@ -21,7 +21,7 @@ dns-lookup = "2.0"
 local-ip-address = "0.6"
 
 # Desktop GUI (egui / eframe); `persistence` stores preferences and window geometry between runs
-eframe = { version = "0.31", features = ["persistence"] }
+eframe = { version = "0.33", features = ["persistence"] }
 egui_extras = "0.31"
 
 # CLI & Formatting
