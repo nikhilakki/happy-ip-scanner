@@ -1,15 +1,30 @@
-/// Lookup device vendor by MAC address OUI prefix
-pub fn lookup_vendor(mac_str: &str) -> Option<&'static str> {
-    let clean = mac_str.replace([':', '-', '.'], "").to_uppercase();
+//! Built-in lookup of common MAC address OUI prefixes to vendor names.
+//!
+//! The prefixes are a small, hand-curated subset of the IEEE MA-L registry
+//! (<https://standards-oui.ieee.org/>) covering vendors that commonly show up on
+//! home and office networks. Anything not listed returns `None`; the full
+//! registry has tens of thousands of entries and is deliberately not bundled.
 
-    if clean.len() < 6 {
+/// Look up the device vendor for a MAC address by its 24-bit OUI prefix.
+///
+/// Accepts any separator (`:`, `-`, `.`, or none) and either case. Returns
+/// `None` for unknown prefixes or input shorter than six hex digits.
+pub fn lookup_vendor(mac_str: &str) -> Option<&'static str> {
+    // Keep only hex digits so odd separators or stray characters cannot shift
+    // the prefix, and take exactly six of them (never slicing by byte offset).
+    let prefix: String = mac_str
+        .chars()
+        .filter(char::is_ascii_hexdigit)
+        .map(|c| c.to_ascii_uppercase())
+        .take(6)
+        .collect();
+
+    if prefix.len() < 6 {
         return None;
     }
 
-    let prefix = &clean[0..6];
-
     // Curated high-frequency vendor OUI map
-    match prefix {
+    match prefix.as_str() {
         // Apple
         "0017F2" | "0019E3" | "001B63" | "001C42" | "001D4F" | "001E52" | "001F5B" | "0021E9"
         | "002241" | "002312" | "002332" | "00236C" | "002436" | "002500" | "00254B" | "002608"
@@ -65,5 +80,40 @@ pub fn lookup_vendor(mac_str: &str) -> Option<&'static str> {
             Some("ASUSTeK Computer")
         }
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::lookup_vendor;
+
+    #[test]
+    fn matches_known_prefix_regardless_of_separator_and_case() {
+        for mac in [
+            "B8:27:EB:12:34:56",
+            "b8-27-eb-12-34-56",
+            "b827.eb12.3456",
+            "b827eb123456",
+        ] {
+            assert_eq!(lookup_vendor(mac), Some("Raspberry Pi"), "{mac}");
+        }
+    }
+
+    #[test]
+    fn unknown_prefix_is_none() {
+        assert_eq!(lookup_vendor("FF:FF:FF:00:00:00"), None);
+    }
+
+    #[test]
+    fn short_or_garbage_input_is_none() {
+        assert_eq!(lookup_vendor(""), None);
+        assert_eq!(lookup_vendor("B8:27"), None);
+        assert_eq!(lookup_vendor("zz:zz:zz:zz:zz:zz"), None);
+    }
+
+    #[test]
+    fn non_ascii_input_does_not_panic() {
+        assert_eq!(lookup_vendor("ééééé"), None);
+        assert_eq!(lookup_vendor("aaaaaé"), None);
     }
 }

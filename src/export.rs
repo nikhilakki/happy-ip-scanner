@@ -10,6 +10,20 @@ use std::path::Path;
 use crate::engine::port_scanner::format_ports;
 use crate::engine::scanner::HostResult;
 
+/// Make a remote-supplied string safe to open in a spreadsheet.
+///
+/// A scanned host controls its reverse-DNS name and HTML title, so it could
+/// return `=HYPERLINK(...)` or `+cmd|...` and have Excel or LibreOffice
+/// evaluate it when the CSV is opened. Prefixing such cells with a single
+/// quote makes spreadsheets treat them as plain text.
+fn csv_text(value: &str) -> String {
+    if value.starts_with(['=', '+', '-', '@', '\t', '\r']) {
+        format!("'{value}")
+    } else {
+        value.to_string()
+    }
+}
+
 pub fn write_csv<W: Write>(results: &[HostResult], writer: W) -> io::Result<()> {
     let mut wtr = csv::Writer::from_writer(writer);
     wtr.write_record([
@@ -28,11 +42,11 @@ pub fn write_csv<W: Write>(results: &[HostResult], writer: W) -> io::Result<()> 
             r.ip.to_string(),
             if r.is_alive { "Alive" } else { "Dead" }.to_string(),
             r.ping_ms.map(|p| format!("{p:.2}")).unwrap_or_default(),
-            r.hostname.clone().unwrap_or_default(),
+            r.hostname.as_deref().map(csv_text).unwrap_or_default(),
             format_ports(&r.open_ports, "; "),
             r.mac_address.clone().unwrap_or_default(),
-            r.vendor.clone().unwrap_or_default(),
-            r.web_title.clone().unwrap_or_default(),
+            r.vendor.as_deref().map(csv_text).unwrap_or_default(),
+            r.web_title.as_deref().map(csv_text).unwrap_or_default(),
         ])?;
     }
 
@@ -123,6 +137,30 @@ mod tests {
         assert!(lines[1].contains("192.168.1.1,Alive,1.23,router.local,80; 443,"));
         assert!(lines[1].contains("\"Router, \"\"Admin\"\"\""));
         assert_eq!(lines[2], "192.168.1.2,Dead,,,,,,");
+    }
+
+    #[test]
+    fn csv_neutralises_formula_injection() {
+        let mut hostile = sample();
+        hostile[0].hostname = Some("=HYPERLINK(\"http://evil\",\"click\")".into());
+        hostile[0].web_title = Some("-2+3".into());
+        hostile[0].vendor = Some("@SUM(1)".into());
+        let mut out = Vec::new();
+        write_csv(&hostile, &mut out).unwrap();
+        let text = String::from_utf8(out).unwrap();
+        assert!(text.contains("\"'=HYPERLINK(\"\"http://evil\"\",\"\"click\"\")\""));
+        assert!(text.contains(",'-2+3"));
+        assert!(text.contains(",'@SUM(1),"));
+        // IP addresses and MACs are never rewritten.
+        assert!(text.contains("192.168.1.1,Alive"));
+        assert!(text.contains("3C:7C:3F:1A:2B:3C"));
+    }
+
+    #[test]
+    fn csv_text_leaves_ordinary_values_alone() {
+        assert_eq!(csv_text("router.local"), "router.local");
+        assert_eq!(csv_text("Apple, Inc."), "Apple, Inc.");
+        assert_eq!(csv_text(""), "");
     }
 
     #[test]
