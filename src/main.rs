@@ -7,30 +7,33 @@ use clap::Parser;
 use cli::{CliArgs, run_cli};
 use gui::run_gui;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = std::env::args().collect();
+fn main() {
+    if let Err(e) = run() {
+        eprintln!("Error: {e}");
+        std::process::exit(1);
+    }
+}
 
-    // If executed without arguments, or if explicitly requested with --gui, launch the Desktop GUI
-    let launch_gui_mode = args.len() == 1 || args.iter().any(|arg| arg == "--gui");
+fn run() -> Result<(), Box<dyn std::error::Error>> {
+    let args = CliArgs::parse();
 
-    if launch_gui_mode {
-        // Set up background Tokio runtime so async tasks (pinging, scanning) can be spawned from GUI
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .expect("Failed to initialize background Tokio runtime");
-        let _guard = rt.enter();
+    // No arguments at all, or an explicit --gui, launches the desktop application.
+    let gui_mode = args.gui || std::env::args_os().len() == 1;
 
-        run_gui().map_err(|e| format!("Failed to launch GUI: {}", e))?;
+    // Scanning opens thousands of sockets; a low file-descriptor limit would make busy
+    // ports look closed. Best effort: nothing to do if the OS refuses.
+    engine::limits::raise_open_file_limit();
+
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+
+    if gui_mode {
+        // Keep the runtime entered so the GUI thread can `tokio::spawn` scans.
+        let _guard = runtime.enter();
+        run_gui().map_err(|e| format!("Failed to launch GUI: {e}"))?;
         Ok(())
     } else {
-        // Run CLI mode
-        let cli_args = CliArgs::parse();
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .expect("Failed to initialize Tokio runtime");
-
-        rt.block_on(async { run_cli(cli_args).await })
+        runtime.block_on(run_cli(args))
     }
 }

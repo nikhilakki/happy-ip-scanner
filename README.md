@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-2024%20edition-orange.svg)](https://www.rust-lang.org)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)]()
+[![CI](https://github.com/nikhilakki/happy-ip-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/nikhilakki/happy-ip-scanner/actions/workflows/ci.yml)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-nikhilakki%2Fhappy--ip--scanner-181717?logo=github)](https://github.com/nikhilakki/happy-ip-scanner)
 
 A blazing-fast, friendly, cross-platform IP address and port scanner written in **Rust**, inspired by and faithfully porting the classic **Angry IP Scanner**.
@@ -20,12 +21,13 @@ A blazing-fast, friendly, cross-platform IP address and port scanner written in 
   - **Instant Search & Filter**: Filter results in real-time by IP, hostname, vendor, or toggle "Show alive only".
   - **Column Sorting**: Click any header to sort by IP address, ping latency, hostname, open port count, MAC, or vendor.
   - **Context Menu**: Right-click any row to open open web services directly in your browser (`http://` / `https://`) or copy IPs/hostnames to your clipboard.
-  - **Preferences Dialog**: Easily configure thread concurrency (up to 500+ workers), timeouts, default ports, and toggle individual fetchers.
+  - **Preferences Dialog**: Configure concurrency (up to 500 hosts at once), timeouts, default ports, ping method, and individual fetchers. Preferences and window size are remembered between runs.
   - **Exporting**: Save scan reports to **CSV**, **JSON**, or **TXT** using native file dialogs.
 
 - ⚡ **Ultra-Fast Asynchronous Engine**:
   - Multi-threaded asynchronous scanning built on **Tokio** with configurable worker concurrency.
-  - Scans an entire `/24` subnet (254 hosts) with port scanning in just seconds.
+  - Scans an entire `/24` subnet (254 hosts) with port scanning in a few seconds: liveness probes run concurrently, so a dead host costs one timeout, not one per port.
+  - A global socket budget (sized from the OS file-descriptor limit, which is raised at startup) keeps full `1-65535` sweeps from exhausting descriptors and silently missing ports.
 
 - 🎯 **Flexible Target Modes**:
   - **IP Range**: e.g. `192.168.1.1` to `192.168.1.254` or short format `192.168.1.1-254`.
@@ -34,9 +36,10 @@ A blazing-fast, friendly, cross-platform IP address and port scanner written in 
   - **Single IP / Hostnames**: e.g. `1.1.1.1` or `scanme.nmap.org`.
 
 - 🔍 **Liveness Pingers & Probes**:
-  - **TCP Port Ping**: Fast, non-root liveness detection that works across macOS, Linux, and Windows without requiring sudo/admin privileges.
-  - **Combined Mode**: TCP connection attempt with ICMP ping fallback.
-  - **Always Scan Mode**: Force port scanning across all targets regardless of ping response.
+  - **TCP Port Ping** (default): Concurrent connection attempts to common ports. An accept *or* a reset proves the host is up. Works without sudo/admin on macOS, Linux, and Windows.
+  - **ICMP Ping**: Echo request via the system `ping` command, for hosts that firewall every TCP port (typical for routers).
+  - **Combined**: TCP first, ICMP as a fallback.
+  - **Always Scan**: Skip the ping and scan ports on every target; a host is alive if any port is open. Use `--scan-dead` to keep the ping result but still scan unresponsive hosts.
 
 - 🚪 **Open Port Scanner**:
   - Support for port lists and hyphenated ranges: `80, 443, 22, 8000-8010, 8080`.
@@ -53,7 +56,9 @@ A blazing-fast, friendly, cross-platform IP address and port scanner written in 
 
 ### Prerequisites
 
-- [Rust toolchain](https://rustup.rs/) (version 1.80+ recommended)
+- [Rust toolchain](https://rustup.rs/) 1.88 or newer (the crate uses the 2024 edition and let-chains)
+- On Linux, the GUI needs the usual egui/GTK development libraries, e.g. on Debian/Ubuntu:
+  `sudo apt-get install libgtk-3-dev libxkbcommon-dev libwayland-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libssl-dev pkg-config`
 
 ### Build from Source
 
@@ -94,7 +99,7 @@ happy-ip-scanner --gui
 | **Start / Stop** | Click **▶ Start** to scan. Turns into **⏹ Stop** to pause or cancel mid-scan. |
 | **📍 Local Subnet** | Automatically populates the input fields with your current active network range. |
 | **Netmask Dropdown** | Switch between `/24` (254 hosts), `/16` (65534 hosts), `/28` (14 hosts), etc. |
-| **⚙ Preferences** | Configure concurrency (1–500 threads), socket timeouts, and toggle fetchers. |
+| **⚙ Preferences** | Configure concurrency (1–500 hosts), socket timeouts, ping method, and fetchers. Saved between runs. |
 | **💾 Export** | Export results to CSV, JSON, or TXT file via native file dialog. |
 | **Right-Click Context** | Open web services in browser (`http://` or `https://`) or copy host details. |
 
@@ -126,13 +131,26 @@ happy-ip-scanner 192.168.1.0/24 -a
 ```
 
 ### 5. Export to CSV, JSON, or TXT
+The format is taken from `--format`, or guessed from the file extension when only `--output` is given:
 ```bash
-happy-ip-scanner 192.168.1.0/24 -o results.csv -f csv
-happy-ip-scanner 192.168.1.0/24 -o results.json -f json
-happy-ip-scanner 192.168.1.0/24 -o alive.txt -f txt -a
+happy-ip-scanner 192.168.1.0/24 -o results.csv
+happy-ip-scanner 192.168.1.0/24 -o results.json
+happy-ip-scanner 192.168.1.0/24 -o alive.txt -a
 ```
 
-### 6. Scan Random Internet Targets
+### 6. Pipe Results to Other Tools
+Non-table formats go to stdout when no `--output` is given. Progress and status messages go to stderr, so stdout stays clean:
+```bash
+happy-ip-scanner 192.168.1.0/24 -f json -a | jq '.[].ip'
+happy-ip-scanner 192.168.1.0/24 -f csv > hosts.csv
+```
+
+### 7. Find Hosts That Firewall TCP (Routers, Printers)
+```bash
+happy-ip-scanner 192.168.1.0/24 --ping combined -a
+```
+
+### 8. Scan Random Internet Targets
 ```bash
 happy-ip-scanner --random 50 -p 80,443 -a
 ```
@@ -153,25 +171,28 @@ happy-ip-scanner --random 50 -p 80,443 -a
 ### CLI Reference
 
 ```
+A fast, friendly, cross-platform IP and port scanner in Rust (Angry IP Scanner port)
+
 Usage: happy-ip-scanner [OPTIONS] [TARGET]
 
 Arguments:
-  [TARGET]  Target IP, CIDR (e.g. 192.168.1.0/24), or range (e.g. 192.168.1.1-254)
+  [TARGET]  Target: IP, hostname, CIDR (192.168.1.0/24) or range (192.168.1.1-254). Defaults to the local /24 subnet when omitted
 
 Options:
-      --gui                Launch desktop GUI interface
+      --gui                Launch the desktop GUI (also the default when run with no arguments)
   -p, --ports <PORTS>      Ports to scan, e.g. "80,443,22,8000-8010" [default: 80,443,22,8080]
-  -t, --threads <THREADS>  Maximum concurrent worker threads [default: 64]
+  -t, --threads <THREADS>  Maximum number of hosts scanned concurrently [default: 64]
       --timeout <TIMEOUT>  Socket timeout per probe in milliseconds [default: 1000]
-  -o, --output <OUTPUT>    Save scan results to a file
-  -f, --format <FORMAT>    Output format: table, csv, json, txt [default: table]
+      --ping <PING>        Liveness check used before port scanning [default: tcp] [possible values: tcp, icmp, combined, always]
+  -o, --output <PATH>      Write results to this file (format from --format, or guessed from the extension)
+  -f, --format <FORMAT>    Output format; non-table formats are written to stdout unless --output is given [default: table] [possible values: table, csv, json, txt]
   -a, --alive-only         Only display / export alive hosts
       --no-dns             Disable reverse DNS hostname resolution
       --no-mac             Disable MAC address / vendor lookup
       --no-banner          Disable HTTP web banner & title grabbing
-      --random <RANDOM>    Generate and scan N random IPs
+      --random <N>         Generate and scan N random public IPv4 addresses instead of TARGET
       --scan-dead          Scan ports even on hosts that don't respond to ping
-  -h, --help               Print help
+  -h, --help               Print help (see more with '--help')
   -V, --version            Print version
 ```
 
@@ -186,6 +207,7 @@ src/
 ├── export.rs               # CSV, JSON, and plain text export handlers
 ├── engine/                 # Scanning engine
 │   ├── ip_range.rs         # IP range generator, CIDR parser, local network detector
+│   ├── limits.rs           # File-descriptor limit handling & socket budget
 │   ├── pinger.rs           # TCP port & ICMP liveness probes
 │   ├── port_scanner.rs     # Concurrent TCP port scan & port range parser
 │   ├── arp.rs              # System ARP cache MAC discovery
@@ -201,9 +223,11 @@ src/
 
 ## 🧪 Testing
 
-Run the automated test suite:
+The same checks run in CI on macOS, Linux, and Windows:
 
 ```bash
+cargo fmt --all --check
+cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 

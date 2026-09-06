@@ -1,19 +1,56 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use comfy_table::modifiers::UTF8_ROUND_CORNERS;
 use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Cell, Color, ContentArrangement, Table};
 use indicatif::{ProgressBar, ProgressStyle};
+use std::io::{self, Write};
 use std::net::IpAddr;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::sync::mpsc;
 
-use crate::engine::ip_range::{detect_local_range, generate_random_ips, parse_target};
+use crate::engine::ip_range::{
+    detect_local_range, generate_random_ips, generate_range_v4, parse_target,
+};
 use crate::engine::pinger::PingMethod;
-use crate::engine::port_scanner::parse_ports;
+use crate::engine::port_scanner::{format_ports, parse_ports};
 use crate::engine::scanner::{HostResult, ScanEvent, ScanOptions, run_scan};
-use crate::export::{export_to_csv, export_to_json, export_to_txt};
+use crate::export::{write_csv, write_json, write_txt};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum OutputFormat {
+    /// Pretty table (default)
+    Table,
+    Csv,
+    Json,
+    /// One host per line
+    Txt,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
+pub enum PingMethodArg {
+    /// TCP connect to common ports; works without root
+    Tcp,
+    /// ICMP echo via the system `ping` command
+    Icmp,
+    /// TCP first, then ICMP as a fallback
+    Combined,
+    /// No ping; a host is alive if any port is open
+    Always,
+}
+
+impl From<PingMethodArg> for PingMethod {
+    fn from(arg: PingMethodArg) -> Self {
+        match arg {
+            PingMethodArg::Tcp => PingMethod::TcpPort,
+            PingMethodArg::Icmp => PingMethod::Icmp,
+            PingMethodArg::Combined => PingMethod::Combined,
+            PingMethodArg::Always => PingMethod::AlwaysScan,
+        }
+    }
+}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -23,81 +60,92 @@ use crate::export::{export_to_csv, export_to_json, export_to_txt};
     about = "A fast, friendly, cross-platform IP and port scanner in Rust (Angry IP Scanner port)"
 )]
 pub struct CliArgs {
-    /// Target IP, CIDR (e.g. 192.168.1.0/24), or range (e.g. 192.168.1.1-254)
+    /// Target: IP, hostname, CIDR (192.168.1.0/24) or range (192.168.1.1-254).
+    /// Defaults to the local /24 subnet when omitted.
     #[arg(value_name = "TARGET")]
     pub target: Option<String>,
 
-    /// Launch desktop GUI interface
-    #[arg(long, default_value_t = false)]
+    /// Launch the desktop GUI (also the default when run with no arguments)
+    #[arg(long)]
     pub gui: bool,
 
     /// Ports to scan, e.g. "80,443,22,8000-8010"
-    #[arg(short = 'p', long = "ports", default_value = "80,443,22,8080")]
+    #[arg(short, long, default_value = "80,443,22,8080")]
     pub ports: String,
 
-    /// Maximum concurrent worker threads
-    #[arg(short = 't', long = "threads", default_value_t = 64)]
+    /// Maximum number of hosts scanned concurrently
+    #[arg(short, long, default_value_t = 64, value_parser = clap::builder::RangedU64ValueParser::<usize>::new().range(1..=2000))]
     pub threads: usize,
 
     /// Socket timeout per probe in milliseconds
-    #[arg(long = "timeout", default_value_t = 1000)]
+    #[arg(long, default_value_t = 1000, value_parser = clap::value_parser!(u64).range(1..=60_000))]
     pub timeout: u64,
 
-    /// Save scan results to a file
-    #[arg(short = 'o', long = "output")]
-    pub output: Option<String>,
+    /// Liveness check used before port scanning
+    #[arg(long, value_enum, default_value_t = PingMethodArg::Tcp)]
+    pub ping: PingMethodArg,
 
-    /// Output format: table, csv, json, txt
-    #[arg(short = 'f', long = "format", default_value = "table")]
-    pub format: String,
+    /// Write results to this file (format from --format, or guessed from the extension)
+    #[arg(short, long, value_name = "PATH")]
+    pub output: Option<PathBuf>,
+
+    /// Output format; non-table formats are written to stdout unless --output is given
+    #[arg(short, long, value_enum, default_value_t = OutputFormat::Table)]
+    pub format: OutputFormat,
 
     /// Only display / export alive hosts
-    #[arg(short = 'a', long = "alive-only", default_value_t = false)]
+    #[arg(short, long)]
     pub alive_only: bool,
 
     /// Disable reverse DNS hostname resolution
-    #[arg(long = "no-dns", default_value_t = false)]
+    #[arg(long)]
     pub no_dns: bool,
 
     /// Disable MAC address / vendor lookup
-    #[arg(long = "no-mac", default_value_t = false)]
+    #[arg(long)]
     pub no_mac: bool,
 
     /// Disable HTTP web banner & title grabbing
-    #[arg(long = "no-banner", default_value_t = false)]
+    #[arg(long)]
     pub no_banner: bool,
 
-    /// Generate and scan N random IPs
-    #[arg(long = "random")]
+    /// Generate and scan N random public IPv4 addresses instead of TARGET
+    #[arg(long, value_name = "N", conflicts_with = "target")]
     pub random: Option<usize>,
 
     /// Scan ports even on hosts that don't respond to ping
-    #[arg(long = "scan-dead", default_value_t = false)]
+    #[arg(long)]
     pub scan_dead: bool,
 }
 
-pub async fn run_cli(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
-    // Determine targets
-    let ips: Vec<IpAddr> = if let Some(random_count) = args.random {
-        println!("🎲 Generating {} random IPv4 addresses...", random_count);
-        generate_random_ips(random_count)
-    } else if let Some(target) = &args.target {
-        parse_target(target)?
-    } else if let Some((_local, start, end)) = detect_local_range() {
-        println!(
-            "ℹ️  No target provided. Auto-detected local subnet: {}-{}",
-            start, end
-        );
-        crate::engine::ip_range::generate_range_v4(start, end)
-    } else {
-        return Err("No target specified. Provide a target (e.g. 192.168.1.0/24) or run without arguments for GUI.".into());
-    };
+fn resolve_targets(args: &CliArgs) -> Result<Vec<IpAddr>, Box<dyn std::error::Error>> {
+    if let Some(count) = args.random {
+        eprintln!("🎲 Generating {count} random public IPv4 addresses...");
+        return Ok(generate_random_ips(count));
+    }
+    if let Some(target) = &args.target {
+        return Ok(parse_target(target)?);
+    }
+    if let Some((_local, start, end)) = detect_local_range() {
+        eprintln!("ℹ️  No target provided. Auto-detected local subnet: {start}-{end}");
+        return Ok(generate_range_v4(start, end));
+    }
+    Err("No target specified and no local network detected. \
+         Provide a target such as 192.168.1.0/24, or run without arguments for the GUI."
+        .into())
+}
 
-    let parsed_ports = parse_ports(&args.ports);
+pub async fn run_cli(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
+    let ips = resolve_targets(&args)?;
+
+    let ports = parse_ports(&args.ports);
+    if ports.is_empty() && !args.ports.trim().is_empty() {
+        return Err(format!("No valid ports in '{}'", args.ports).into());
+    }
 
     let options = ScanOptions {
-        ports: parsed_ports.clone(),
-        ping_method: PingMethod::TcpPort,
+        ports,
+        ping_method: args.ping.into(),
         timeout_ms: args.timeout,
         threads: args.threads,
         resolve_hostname: !args.no_dns,
@@ -106,11 +154,13 @@ pub async fn run_cli(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
         scan_dead_hosts: args.scan_dead,
     };
 
-    println!("⚡ Happy IP Scanner v{}", env!("CARGO_PKG_VERSION"));
-    println!(
-        "🎯 Scanning {} hosts | Ports: [{}] | Concurrency: {} | Timeout: {}ms",
+    // Progress and status go to stderr so stdout stays clean for piped CSV/JSON output.
+    eprintln!("⚡ Happy IP Scanner v{}", env!("CARGO_PKG_VERSION"));
+    eprintln!(
+        "🎯 Scanning {} hosts | Ports: [{}] | Ping: {} | Concurrency: {} | Timeout: {}ms",
         ips.len(),
-        args.ports,
+        format_ports(&options.ports, ", "),
+        options.ping_method.label(),
         options.threads,
         options.timeout_ms
     );
@@ -122,147 +172,216 @@ pub async fn run_cli(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
             .expect("Invalid progress bar template")
             .progress_chars("━╸ "),
     );
+    pb.set_message("0");
     pb.enable_steady_tick(Duration::from_millis(100));
 
     let (tx, mut rx) = mpsc::channel(256);
     let cancel_token = Arc::new(AtomicBool::new(false));
 
-    // Handle Ctrl-C gracefully
-    let cancel_ctrlc = cancel_token.clone();
+    // First Ctrl-C stops the scan and prints what was found; a second one quits immediately.
+    let cancel_on_ctrlc = Arc::clone(&cancel_token);
+    let pb_for_ctrlc = pb.clone();
     tokio::spawn(async move {
-        let _ = tokio::signal::ctrl_c().await;
-        println!("\n⚠️  Scan interrupted by user. Finalizing completed hosts...");
-        cancel_ctrlc.store(true, std::sync::atomic::Ordering::Relaxed);
+        if tokio::signal::ctrl_c().await.is_ok() {
+            cancel_on_ctrlc.store(true, Ordering::Relaxed);
+            pb_for_ctrlc.println(
+                "⚠️  Interrupted. Stopping scan (press Ctrl-C again to quit immediately)...",
+            );
+            if tokio::signal::ctrl_c().await.is_ok() {
+                std::process::exit(130);
+            }
+        }
     });
 
     let scan_handle = tokio::spawn(run_scan(ips, options, cancel_token, tx));
 
     let mut results: Vec<HostResult> = Vec::new();
-    let mut alive_count = 0;
+    let mut alive_count = 0usize;
 
     while let Some(event) = rx.recv().await {
         match event {
-            ScanEvent::Started { total_ips } => {
-                pb.set_length(total_ips as u64);
-            }
+            ScanEvent::Started { total_ips } => pb.set_length(total_ips as u64),
             ScanEvent::Host(host) => {
                 if host.is_alive {
                     alive_count += 1;
                 }
                 results.push(*host);
-            }
-            ScanEvent::Progress { scanned, alive, .. } => {
-                pb.set_position(scanned as u64);
-                pb.set_message(format!("{}", alive));
+                pb.set_position(results.len() as u64);
+                pb.set_message(alive_count.to_string());
             }
             ScanEvent::Finished { elapsed_secs, .. } => {
-                pb.finish_with_message(format!("{} (Done in {:.2}s)", alive_count, elapsed_secs));
+                pb.finish_with_message(format!("{alive_count} (done in {elapsed_secs:.2}s)"));
             }
             ScanEvent::Stopped => {
-                pb.finish_with_message(format!("{} (Stopped)", alive_count));
+                pb.finish_with_message(format!("{alive_count} (stopped)"));
             }
         }
     }
-
     let _ = scan_handle.await;
 
-    // Sort results by IP address for predictable, clean display
     results.sort_by_key(|r| r.ip);
-
-    // Filter results if alive_only requested
-    let display_results: Vec<&HostResult> = results
-        .iter()
-        .filter(|r| !args.alive_only || r.is_alive)
-        .collect();
-
-    // Print table if format is table
-    if args.format.to_lowercase() == "table" {
-        print_table(&display_results);
+    if args.alive_only {
+        results.retain(|r| r.is_alive);
     }
 
-    // Export to file if specified
-    if let Some(out_path) = &args.output {
-        match args.format.to_lowercase().as_str() {
-            "csv" => {
-                export_to_csv(&results, out_path)?;
-                println!("💾 Exported CSV results to: {}", out_path);
-            }
-            "json" => {
-                export_to_json(&results, out_path)?;
-                println!("💾 Exported JSON results to: {}", out_path);
-            }
-            "txt" => {
-                export_to_txt(&results, out_path, args.alive_only)?;
-                println!("💾 Exported TXT results to: {}", out_path);
-            }
-            _ => {
-                // Default export CSV
-                export_to_csv(&results, out_path)?;
-                println!("💾 Exported CSV results to: {}", out_path);
-            }
+    match (args.format, &args.output) {
+        (OutputFormat::Table, None) => print_table(&results),
+        (OutputFormat::Table, Some(path)) => {
+            print_table(&results);
+            save_to_file(format_for_path(path), &results, path)?;
         }
+        (format, Some(path)) => save_to_file(format, &results, path)?,
+        (format, None) => write_results(format, &results, io::stdout().lock())?,
     }
 
     Ok(())
 }
 
-fn print_table(results: &[&HostResult]) {
+/// Pick an export format from a file extension: `.json`, `.txt`, otherwise CSV.
+fn format_for_path(path: &Path) -> OutputFormat {
+    match path
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("json") => OutputFormat::Json,
+        Some("txt") => OutputFormat::Txt,
+        _ => OutputFormat::Csv,
+    }
+}
+
+fn save_to_file(format: OutputFormat, results: &[HostResult], path: &Path) -> io::Result<()> {
+    let file = io::BufWriter::new(std::fs::File::create(path)?);
+    write_results(format, results, file)?;
+    eprintln!(
+        "💾 Saved {} host(s) as {} to {}",
+        results.len(),
+        format
+            .to_possible_value()
+            .map(|v| v.get_name().to_uppercase())
+            .unwrap_or_default(),
+        path.display()
+    );
+    Ok(())
+}
+
+fn write_results<W: Write>(
+    format: OutputFormat,
+    results: &[HostResult],
+    mut writer: W,
+) -> io::Result<()> {
+    match format {
+        OutputFormat::Csv => write_csv(results, writer),
+        OutputFormat::Json => write_json(results, writer),
+        OutputFormat::Txt => write_txt(results, writer),
+        OutputFormat::Table => writeln!(writer, "{}", render_table(results)),
+    }
+}
+
+fn print_table(results: &[HostResult]) {
+    if results.is_empty() {
+        eprintln!("No hosts to display.");
+        return;
+    }
+    println!("\n{}", render_table(results));
+}
+
+fn render_table(results: &[HostResult]) -> Table {
     let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
         .apply_modifier(UTF8_ROUND_CORNERS)
         .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_header(vec![
-            Cell::new("Status"),
-            Cell::new("IP Address"),
-            Cell::new("Ping"),
-            Cell::new("Hostname"),
-            Cell::new("Open Ports"),
-            Cell::new("MAC Address"),
-            Cell::new("Vendor"),
-            Cell::new("Web / Banner"),
+        .set_header([
+            "Status",
+            "IP Address",
+            "Ping",
+            "Hostname",
+            "Open Ports",
+            "MAC Address",
+            "Vendor",
+            "Web / Banner",
         ]);
 
     for r in results {
-        let status_cell = if r.is_alive {
-            if !r.open_ports.is_empty() {
-                Cell::new("● ALIVE").fg(Color::Green)
-            } else {
-                Cell::new("● ALIVE").fg(Color::Blue)
-            }
-        } else {
-            Cell::new("○ DEAD").fg(Color::Red)
+        let status_cell = match (r.is_alive, r.open_ports.is_empty()) {
+            (true, false) => Cell::new("● ALIVE").fg(Color::Green),
+            (true, true) => Cell::new("● ALIVE").fg(Color::Blue),
+            (false, _) => Cell::new("○ DEAD").fg(Color::Red),
         };
-
-        let ping_str = r
+        let ping = r
             .ping_ms
-            .map(|p| format!("{:.1}ms", p))
+            .map(|p| format!("{p:.1}ms"))
             .unwrap_or_else(|| "-".into());
-        let host_str = r.hostname.as_deref().unwrap_or("-");
-        let ports_str = if r.open_ports.is_empty() {
+        let ports = if r.open_ports.is_empty() {
             "-".to_string()
         } else {
-            r.open_ports
-                .iter()
-                .map(|p| p.to_string())
-                .collect::<Vec<_>>()
-                .join(", ")
+            format_ports(&r.open_ports, ", ")
         };
-        let mac_str = r.mac_address.as_deref().unwrap_or("-");
-        let vendor_str = r.vendor.as_deref().unwrap_or("-");
-        let banner_str = r.web_title.as_deref().unwrap_or("-");
 
         table.add_row(vec![
             status_cell,
             Cell::new(r.ip.to_string()).fg(Color::Cyan),
-            Cell::new(ping_str).fg(Color::Yellow),
-            Cell::new(host_str),
-            Cell::new(ports_str).fg(Color::Green),
-            Cell::new(mac_str),
-            Cell::new(vendor_str),
-            Cell::new(banner_str),
+            Cell::new(ping).fg(Color::Yellow),
+            Cell::new(r.hostname.as_deref().unwrap_or("-")),
+            Cell::new(ports).fg(Color::Green),
+            Cell::new(r.mac_address.as_deref().unwrap_or("-")),
+            Cell::new(r.vendor.as_deref().unwrap_or("-")),
+            Cell::new(r.web_title.as_deref().unwrap_or("-")),
         ]);
     }
 
-    println!("\n{}", table);
+    table
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::CommandFactory;
+
+    #[test]
+    fn cli_definition_is_valid() {
+        CliArgs::command().debug_assert();
+    }
+
+    #[test]
+    fn defaults_and_flags_parse() {
+        let args = CliArgs::try_parse_from([
+            "hip",
+            "192.168.1.0/24",
+            "-p",
+            "22",
+            "-t",
+            "10",
+            "--ping",
+            "combined",
+            "-f",
+            "json",
+            "-a",
+        ])
+        .unwrap();
+        assert_eq!(args.target.as_deref(), Some("192.168.1.0/24"));
+        assert_eq!(args.threads, 10);
+        assert_eq!(args.ping, PingMethodArg::Combined);
+        assert_eq!(args.format, OutputFormat::Json);
+        assert!(args.alive_only);
+        assert!(!args.gui);
+    }
+
+    #[test]
+    fn rejects_out_of_range_and_conflicting_values() {
+        assert!(CliArgs::try_parse_from(["hip", "-t", "0"]).is_err());
+        assert!(CliArgs::try_parse_from(["hip", "--timeout", "0"]).is_err());
+        assert!(CliArgs::try_parse_from(["hip", "-f", "xml"]).is_err());
+        assert!(CliArgs::try_parse_from(["hip", "--random", "5", "1.1.1.1"]).is_err());
+    }
+
+    #[test]
+    fn output_format_follows_extension() {
+        assert_eq!(format_for_path(Path::new("out.JSON")), OutputFormat::Json);
+        assert_eq!(format_for_path(Path::new("alive.txt")), OutputFormat::Txt);
+        assert_eq!(format_for_path(Path::new("scan.csv")), OutputFormat::Csv);
+        assert_eq!(format_for_path(Path::new("scan")), OutputFormat::Csv);
+    }
 }

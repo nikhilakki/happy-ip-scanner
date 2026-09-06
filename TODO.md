@@ -72,7 +72,7 @@ This document tracks planned features, enhancements, and backlog items for **Hap
 ## 🚀 CI/CD & Distribution
 
 - [ ] **GitHub Actions Workflows**:
-  - [ ] CI pipeline for automated `cargo test` and `cargo clippy` on macOS, Ubuntu, and Windows.
+  - [x] CI pipeline for `cargo fmt`, `cargo clippy` and `cargo test` on macOS, Ubuntu, and Windows (`.github/workflows/ci.yml`).
   - [ ] Automated release workflow creating multi-architecture release binaries on tag push.
 - [ ] **Package Managers**:
   - [ ] Homebrew tap formula (`brew install nikhilakki/tap/happy-ip-scanner`).
