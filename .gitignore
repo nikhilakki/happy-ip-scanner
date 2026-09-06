@@ -2,3 +2,11 @@
 .DS_Store
 .idea/
 .vscode/
+
+# Release archives built locally by the packaging step in .github/workflows/release.yml
+/dist/
+
+# Scan output files from the README examples (may contain internal hostnames)
+/*.csv
+/*.json
+/*.txt

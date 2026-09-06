@@ -57,7 +57,7 @@ impl From<PingMethodArg> for PingMethod {
     name = "happy-ip-scanner",
     author,
     version,
-    about = "A fast, friendly, cross-platform IP and port scanner in Rust (Angry IP Scanner port)"
+    about = "A fast, friendly, cross-platform IP and port scanner in Rust, inspired by Angry IP Scanner"
 )]
 pub struct CliArgs {
     /// Target: IP, hostname, CIDR (192.168.1.0/24) or range (192.168.1.1-254).

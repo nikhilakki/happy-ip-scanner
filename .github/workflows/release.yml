@@ -1,0 +1,158 @@
+name: Release
+
+# Pushing a tag such as v0.1.0 builds every target and publishes a GitHub release.
+# Running the workflow manually (workflow_dispatch) is a dry run: it builds and
+# uploads the archives as workflow artifacts but does not create a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux builds run on Ubuntu 22.04 so the binaries only need glibc 2.35
+          # and work on Debian 12, Ubuntu 22.04, and newer.
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            archive: tar.gz
+          - os: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+            archive: tar.gz
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            archive: tar.gz
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            archive: tar.gz
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: zip
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install Linux system libraries (eframe + rfd)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libxkbcommon-dev libwayland-dev \
+            libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev pkg-config
+
+      - name: Read version from Cargo.toml
+        id: version
+        shell: bash
+        run: |
+          version="$(grep '^version' Cargo.toml | head -1 | cut -d '"' -f2)"
+          if [ -z "${version}" ]; then
+            echo "Could not read the package version from Cargo.toml" >&2
+            exit 1
+          fi
+          echo "Cargo.toml version: ${version}"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+      - name: Check that the tag matches Cargo.toml
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "${tag}" != "${VERSION}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${VERSION}" >&2
+            exit 1
+          fi
+          echo "Tag ${GITHUB_REF_NAME} matches Cargo.toml version ${VERSION}"
+
+      - name: Build
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: cargo build --release --locked --target "${TARGET}"
+
+      - name: Package
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TARGET: ${{ matrix.target }}
+          ARCHIVE: ${{ matrix.archive }}
+        run: |
+          set -u
+          bin="happy-ip-scanner"
+          if [ "${RUNNER_OS}" = "Windows" ]; then
+            bin="${bin}.exe"
+          fi
+
+          name="happy-ip-scanner-${VERSION}-${TARGET}"
+          asset="${name}.${ARCHIVE}"
+          mkdir -p "dist/${name}"
+          cp "target/${TARGET}/release/${bin}" README.md LICENSE CHANGELOG.md THIRD_PARTY_LICENSES.md "dist/${name}/"
+
+          cd dist
+          if [ "${ARCHIVE}" = "zip" ]; then
+            7z a -tzip "${asset}" "${name}" > /dev/null
+          else
+            # COPYFILE_DISABLE keeps macOS from adding ._* resource-fork entries.
+            COPYFILE_DISABLE=1 tar -czf "${asset}" "${name}"
+          fi
+          rm -rf "${name}"
+
+          if command -v sha256sum > /dev/null 2>&1; then
+            sha256sum "${asset}" > "${asset}.sha256"
+          else
+            shasum -a 256 "${asset}" > "${asset}.sha256"
+          fi
+          cat "${asset}.sha256"
+          ls -l
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: happy-ip-scanner-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub release
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Verify checksums
+        shell: bash
+        run: |
+          cd dist
+          ls -l
+          sha256sum -c -- *.sha256
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}

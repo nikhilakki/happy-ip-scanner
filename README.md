@@ -1,14 +1,21 @@
 # ⚡ Happy IP Scanner
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Rust](https://img.shields.io/badge/rust-2024%20edition-orange.svg)](https://www.rust-lang.org)
-[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)]()
+[![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)](https://github.com/nikhilakki/happy-ip-scanner/releases)
 [![CI](https://github.com/nikhilakki/happy-ip-scanner/actions/workflows/ci.yml/badge.svg)](https://github.com/nikhilakki/happy-ip-scanner/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/nikhilakki/happy-ip-scanner?include_prereleases)](https://github.com/nikhilakki/happy-ip-scanner/releases)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-nikhilakki%2Fhappy--ip--scanner-181717?logo=github)](https://github.com/nikhilakki/happy-ip-scanner)
 
-A blazing-fast, friendly, cross-platform IP address and port scanner written in **Rust**, inspired by and faithfully porting the classic **Angry IP Scanner**.
+A blazing-fast, friendly, cross-platform IP address and port scanner written in **Rust**, inspired by the classic **Angry IP Scanner**.
 
 **Happy IP Scanner** features both a modern, native **Desktop GUI** (powered by [`egui`](https://github.com/emilk/egui)) and a high-performance **Command-Line Interface (CLI)** powered by [`tokio`](https://tokio.rs).
+
+---
+
+## ⚠️ Responsible Use
+
+Only scan networks and hosts you own or have explicit permission to test. Unauthorized scanning may violate local laws or the terms of service of your network or hosting provider. See [SECURITY.md](SECURITY.md) for the full note.
 
 ---
 
@@ -47,18 +54,28 @@ A blazing-fast, friendly, cross-platform IP address and port scanner written in 
 
 - 🏷️ **Information Fetchers**:
   - **Reverse DNS**: Asynchronous hostname resolution.
-  - **MAC Address & OUI Vendor**: Local ARP cache inspection + built-in IEEE OUI vendor identification (Apple, Cisco, Intel, Raspberry Pi, TP-Link, Google, Ubiquiti, etc.).
+  - **MAC Address & OUI Vendor**: Local ARP cache inspection + built-in lookup of common IEEE OUI vendor prefixes (Apple, Cisco, Intel, Raspberry Pi, TP-Link, Google, Ubiquiti, etc.).
   - **Web Title & Banner Grabber**: Lightweight HTTP GET parser that extracts HTML `<title>` tags and `Server:` banners from open web ports.
 
 ---
 
 ## 🚀 Installation & Setup
 
+### Prebuilt Binaries
+
+Binaries for macOS (Apple Silicon and Intel), Linux (x86_64 and arm64), and Windows x86_64 are attached to every tagged release on the [releases page](https://github.com/nikhilakki/happy-ip-scanner/releases). Each archive contains the binary, README, LICENSE, CHANGELOG, and THIRD_PARTY_LICENSES, and ships with a `.sha256` checksum so you can verify the download. The Linux binaries are built on Ubuntu 22.04 and need glibc 2.35 or newer plus the GTK 3 runtime libraries.
+
+On macOS, Gatekeeper may block the unsigned binary after download. Remove the quarantine attribute to run it:
+
+```bash
+xattr -d com.apple.quarantine ./happy-ip-scanner
+```
+
 ### Prerequisites
 
 - [Rust toolchain](https://rustup.rs/) 1.88 or newer (the crate uses the 2024 edition and let-chains)
 - On Linux, the GUI needs the usual egui/GTK development libraries, e.g. on Debian/Ubuntu:
-  `sudo apt-get install libgtk-3-dev libxkbcommon-dev libwayland-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libssl-dev pkg-config`
+  `sudo apt-get install libgtk-3-dev libxkbcommon-dev libwayland-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev pkg-config`
 
 ### Build from Source
 
@@ -171,7 +188,7 @@ happy-ip-scanner --random 50 -p 80,443 -a
 ### CLI Reference
 
 ```
-A fast, friendly, cross-platform IP and port scanner in Rust (Angry IP Scanner port)
+A fast, friendly, cross-platform IP and port scanner in Rust, inspired by Angry IP Scanner
 
 Usage: happy-ip-scanner [OPTIONS] [TARGET]
 
@@ -211,7 +228,7 @@ src/
 │   ├── pinger.rs           # TCP port & ICMP liveness probes
 │   ├── port_scanner.rs     # Concurrent TCP port scan & port range parser
 │   ├── arp.rs              # System ARP cache MAC discovery
-│   ├── vendor.rs           # IEEE OUI MAC vendor lookup database
+│   ├── vendor.rs           # Built-in OUI prefix to vendor lookup
 │   ├── web_banner.rs       # HTTP web title and server header grabber
 │   └── scanner.rs          # Asynchronous scan coordinator & worker pool
 └── gui/                    # egui / eframe desktop application
@@ -243,10 +260,20 @@ Contributions, issues, and feature requests are welcome!
 4. Push to the branch (`git push origin feat/my-new-feature`)
 5. Open a Pull Request
 
+Before you start, please read:
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, the checks that run in CI, and the pull request process
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations
+- [SECURITY.md](SECURITY.md) for how to report a vulnerability privately (please do not open a public issue)
+- [TODO.md](TODO.md) for the roadmap and open items
+- [CHANGELOG.md](CHANGELOG.md) for notable changes in each release
+
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
+
+Happy IP Scanner is an independent implementation inspired by [Angry IP Scanner](https://angryip.org/). It contains no code from Angry IP Scanner and is not affiliated with or endorsed by its authors. The licenses of the third-party crates and fonts bundled into release binaries are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
 Copyright (c) 2026 [Nikhil Akki](https://github.com/nikhilakki).

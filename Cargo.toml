@@ -4,13 +4,14 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.88"
 authors = ["Nikhil Akki"]
-description = "A fast, friendly, cross-platform IP and port scanner in Rust (Angry IP Scanner port)"
+description = "A fast, friendly, cross-platform IP and port scanner in Rust, inspired by Angry IP Scanner"
 license = "MIT"
 repository = "https://github.com/nikhilakki/happy-ip-scanner"
 homepage = "https://github.com/nikhilakki/happy-ip-scanner"
 readme = "README.md"
 keywords = ["network", "scanner", "ip", "port-scanner", "egui"]
 categories = ["command-line-utilities", "network-programming", "gui"]
+exclude = [".github/", ".editorconfig", "TODO.md"]
 
 [dependencies]
 # Async Runtime & Networking
@@ -26,7 +27,7 @@ egui_extras = "0.31"
 # CLI & Formatting
 clap = { version = "4.5", features = ["derive"] }
 comfy-table = "7.1"
-indicatif = "0.17"
+indicatif = "0.18"
 
 # Serialization & Export
 serde = { version = "1.0", features = ["derive"] }

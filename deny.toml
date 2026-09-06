@@ -1,0 +1,50 @@
+# cargo-deny configuration: https://embarkstudios.github.io/cargo-deny/
+# Run locally with `cargo deny check`; CI runs the same in .github/workflows/ci.yml.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+# Each ignore below is a transitive dependency of eframe/egui 0.31 that this crate
+# cannot upgrade on its own. Re-check them when bumping eframe (see TODO.md).
+ignore = [
+  # `paste` is unmaintained; pulled in by accesskit_windows (Windows accessibility).
+  { id = "RUSTSEC-2024-0436", reason = "proc-macro used at build time only by accesskit_windows via eframe 0.31; no runtime exposure" },
+  # `ttf-parser` is unmaintained; pulled in by ab_glyph -> epaint (font rasterising).
+  { id = "RUSTSEC-2026-0192", reason = "parses only the fonts bundled in the binary, never remote data; upgrade path is eframe >= 0.36" },
+  # quick-xml 0.30 DoS advisories; pulled in by zbus_xml -> atspi -> accesskit_unix (Linux AT-SPI accessibility).
+  { id = "RUSTSEC-2026-0194", reason = "Linux-only; parses D-Bus introspection XML from the local session bus, not network input; upgrade path is eframe >= 0.36" },
+  { id = "RUSTSEC-2026-0195", reason = "Linux-only; parses D-Bus introspection XML from the local session bus, not network input; upgrade path is eframe >= 0.36" },
+]
+
+[licenses]
+version = 2
+# Every license below is compatible with redistributing the binary under MIT.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Zlib",
+  "0BSD",
+  "Unlicense",
+  "BSL-1.0",
+  "CC0-1.0",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+  "MPL-2.0",
+  "OFL-1.1",
+  "Ubuntu-font-1.0",
+]
+confidence-threshold = 0.8
+
+[bans]
+multiple-versions = "allow"
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

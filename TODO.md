@@ -1,4 +1,4 @@
-# 📋 Happy IP Scanner — Roadmap & TODO
+# 📋 Happy IP Scanner: Roadmap & TODO
 
 This document tracks planned features, enhancements, and backlog items for **Happy IP Scanner** (`github.com/nikhilakki/happy-ip-scanner`).
 
@@ -19,6 +19,15 @@ This document tracks planned features, enhancements, and backlog items for **Hap
   - [ ] Create macOS `.app` bundle and `.dmg` installer with custom app icon.
   - [ ] Create Linux `.deb`, `.rpm`, and AppImage packaging.
   - [ ] Create Windows `.msi` / standalone `.exe` installer.
+  - [ ] Code-sign and notarize the macOS release binaries so Gatekeeper does not block them.
+
+---
+
+## 🧰 Maintenance
+
+- [ ] **Upgrade `eframe` / `egui` to 0.36+**:
+  - [ ] Clears the RUSTSEC advisories currently ignored with reasons in `deny.toml` (`quick-xml` 0.30 via `zbus_xml`, `paste`, `ttf-parser`), all transitive dependencies of eframe 0.31.
+  - [ ] Re-run `cargo about generate about.hbs -o THIRD_PARTY_LICENSES.md` afterwards.
 
 ---
 
@@ -71,9 +80,9 @@ This document tracks planned features, enhancements, and backlog items for **Hap
 
 ## 🚀 CI/CD & Distribution
 
-- [ ] **GitHub Actions Workflows**:
+- [x] **GitHub Actions Workflows**:
   - [x] CI pipeline for `cargo fmt`, `cargo clippy` and `cargo test` on macOS, Ubuntu, and Windows (`.github/workflows/ci.yml`).
-  - [ ] Automated release workflow creating multi-architecture release binaries on tag push.
+  - [x] Automated release workflow creating multi-architecture release binaries on tag push (`.github/workflows/release.yml`).
 - [ ] **Package Managers**:
   - [ ] Homebrew tap formula (`brew install nikhilakki/tap/happy-ip-scanner`).
   - [ ] Publish crate to [crates.io](https://crates.io).

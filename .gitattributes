@@ -1,0 +1,8 @@
+# Normalise line endings so checkouts on Windows do not produce CRLF diffs
+# (CI runs cargo fmt --check on windows-latest).
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary

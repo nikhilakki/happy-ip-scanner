@@ -1,0 +1,129 @@
+name: Bug report
+description: Something in Happy IP Scanner is not working as expected.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The more precise the report, the faster it gets fixed.
+
+        Please only report scans against networks and hosts you are authorized to scan.
+        For security vulnerabilities, do not open a public issue; use the private security advisory link on the issue chooser instead.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+      placeholder: When I scan a /24 with ICMP ping selected, the scan finishes instantly and reports every host as dead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps so someone else can reproduce the problem.
+      placeholder: |
+        1. Launch happy-ip-scanner
+        2. Enter 192.168.1.0/24 in the IP Range field
+        3. Open Preferences and set Ping Method to ICMP Ping
+        4. Click Start
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happened. Include any error message verbatim.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Mode
+      description: Where does the bug occur?
+      options:
+        - GUI
+        - CLI
+        - Both
+    validations:
+      required: true
+
+  - type: textarea
+    id: invocation
+    attributes:
+      label: Command line or GUI settings
+      description: The exact command you ran, or the target you entered in the GUI plus the ports, concurrency, timeout, and ping method from Preferences.
+      placeholder: happy-ip-scanner 192.168.1.0/24 -p 22,80,443 --ping combined -t 128 --timeout 500
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `happy-ip-scanner --version`, or the git commit hash if you built from source.
+      placeholder: happy-ip-scanner 0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+        - Windows
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version
+      description: Include the distribution and desktop session (X11 or Wayland) on Linux.
+      placeholder: macOS 15.6, Ubuntu 24.04 (Wayland), Windows 11 24H2
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Install method
+      options:
+        - Built from source (cargo build)
+        - cargo install
+        - Release binary
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste terminal output inside a code block (three backticks) or drag screenshots into this box.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues and this bug has not already been reported.
+          required: true
+        - label: Any scan involved in this report targeted networks or hosts I am authorized to scan.
+          required: true
