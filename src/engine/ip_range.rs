@@ -1,6 +1,6 @@
+use ipnet::Ipv4Net;
 use std::net::{IpAddr, Ipv4Addr, ToSocketAddrs};
 use std::str::FromStr;
-use ipnet::Ipv4Net;
 
 /// Automatically detect the primary local network IP and generate default range
 pub fn detect_local_range() -> Option<(Ipv4Addr, Ipv4Addr, Ipv4Addr)> {
@@ -95,7 +95,10 @@ pub fn parse_target(target: &str) -> Result<Vec<IpAddr>, String> {
         }
     }
 
-    Err(format!("Unable to parse target '{}' as CIDR, IP range, or hostname", target))
+    Err(format!(
+        "Unable to parse target '{}' as CIDR, IP range, or hostname",
+        target
+    ))
 }
 
 /// Generate N random IPv4 addresses (useful for random scanning feature of Angry IP Scanner)

@@ -3,13 +3,15 @@ use egui::{Color32, RichText, Vec2};
 use egui_extras::{Column, TableBuilder};
 use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::mpsc;
 
-use crate::engine::ip_range::{detect_local_range, generate_random_ips, generate_range_v4, parse_target};
+use crate::engine::ip_range::{
+    detect_local_range, generate_random_ips, generate_range_v4, parse_target,
+};
 use crate::engine::pinger::PingMethod;
-use crate::engine::scanner::{run_scan, HostResult, ScanEvent};
+use crate::engine::scanner::{HostResult, ScanEvent, run_scan};
 use crate::export::{export_to_csv, export_to_json, export_to_txt};
 use crate::gui::preferences::ScannerPreferences;
 
@@ -259,7 +261,11 @@ impl eframe::App for HappyIpScannerApp {
                         }
                         self.results.push(*host);
                     }
-                    ScanEvent::Progress { scanned, total, alive } => {
+                    ScanEvent::Progress {
+                        scanned,
+                        total,
+                        alive,
+                    } => {
                         self.scanned_count = scanned;
                         self.alive_count = alive;
                         self.scan_progress = if total > 0 {
@@ -328,7 +334,10 @@ impl eframe::App for HappyIpScannerApp {
 
                     ui.horizontal(|ui| {
                         ui.label("Timeout (ms):");
-                        ui.add(egui::Slider::new(&mut self.preferences.timeout_ms, 100..=5000));
+                        ui.add(egui::Slider::new(
+                            &mut self.preferences.timeout_ms,
+                            100..=5000,
+                        ));
                     });
 
                     ui.add_space(5.0);
@@ -362,10 +371,22 @@ impl eframe::App for HappyIpScannerApp {
                     ui.add_space(5.0);
                     ui.heading("Fetchers");
                     ui.separator();
-                    ui.checkbox(&mut self.preferences.resolve_hostname, "Resolve Hostnames (Reverse DNS)");
-                    ui.checkbox(&mut self.preferences.lookup_mac, "Lookup MAC Address & OUI Vendor");
-                    ui.checkbox(&mut self.preferences.fetch_web_title, "Fetch Web Title / HTTP Banner");
-                    ui.checkbox(&mut self.preferences.scan_dead_hosts, "Scan ports on hosts that don't respond to ping");
+                    ui.checkbox(
+                        &mut self.preferences.resolve_hostname,
+                        "Resolve Hostnames (Reverse DNS)",
+                    );
+                    ui.checkbox(
+                        &mut self.preferences.lookup_mac,
+                        "Lookup MAC Address & OUI Vendor",
+                    );
+                    ui.checkbox(
+                        &mut self.preferences.fetch_web_title,
+                        "Fetch Web Title / HTTP Banner",
+                    );
+                    ui.checkbox(
+                        &mut self.preferences.scan_dead_hosts,
+                        "Scan ports on hosts that don't respond to ping",
+                    );
 
                     ui.add_space(10.0);
                     ui.horizontal(|ui| {
@@ -387,7 +408,11 @@ impl eframe::App for HappyIpScannerApp {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             ui.add_space(6.0);
             ui.horizontal(|ui| {
-                ui.heading(RichText::new("⚡ Happy IP Scanner").strong().color(Color32::from_rgb(46, 204, 113)));
+                ui.heading(
+                    RichText::new("⚡ Happy IP Scanner")
+                        .strong()
+                        .color(Color32::from_rgb(46, 204, 113)),
+                );
                 ui.label(RichText::new(format!("v{}", env!("CARGO_PKG_VERSION"))).weak());
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -408,7 +433,8 @@ impl eframe::App for HappyIpScannerApp {
                                     if let Err(e) = export_to_csv(&self.results, path) {
                                         self.status_message = format!("Export error: {}", e);
                                     } else {
-                                        self.status_message = "Successfully exported to CSV!".to_string();
+                                        self.status_message =
+                                            "Successfully exported to CSV!".to_string();
                                     }
                                 }
                             }
@@ -421,7 +447,8 @@ impl eframe::App for HappyIpScannerApp {
                                     if let Err(e) = export_to_json(&self.results, path) {
                                         self.status_message = format!("Export error: {}", e);
                                     } else {
-                                        self.status_message = "Successfully exported to JSON!".to_string();
+                                        self.status_message =
+                                            "Successfully exported to JSON!".to_string();
                                     }
                                 }
                             }
@@ -434,7 +461,8 @@ impl eframe::App for HappyIpScannerApp {
                                     if let Err(e) = export_to_txt(&self.results, path, true) {
                                         self.status_message = format!("Export error: {}", e);
                                     } else {
-                                        self.status_message = "Successfully exported to TXT!".to_string();
+                                        self.status_message =
+                                            "Successfully exported to TXT!".to_string();
                                     }
                                 }
                             }
@@ -466,7 +494,11 @@ impl eframe::App for HappyIpScannerApp {
                     })
                     .show_ui(ui, |ui| {
                         ui.selectable_value(&mut self.scan_mode, ScanMode::IpRange, "IP Range");
-                        ui.selectable_value(&mut self.scan_mode, ScanMode::Netmask, "Netmask / Subnet");
+                        ui.selectable_value(
+                            &mut self.scan_mode,
+                            ScanMode::Netmask,
+                            "Netmask / Subnet",
+                        );
                         ui.selectable_value(&mut self.scan_mode, ScanMode::Random, "Random IPs");
                     });
 
@@ -483,11 +515,22 @@ impl eframe::App for HappyIpScannerApp {
                         ui.label("Netmask:");
                         let mut changed = false;
                         egui::ComboBox::from_id_salt("netmask_combo")
-                            .selected_text(format!("/{} ({} hosts)", self.selected_netmask, (1u64 << (32 - self.selected_netmask)).saturating_sub(2)))
+                            .selected_text(format!(
+                                "/{} ({} hosts)",
+                                self.selected_netmask,
+                                (1u64 << (32 - self.selected_netmask)).saturating_sub(2)
+                            ))
                             .show_ui(ui, |ui| {
                                 for &m in &[30, 29, 28, 27, 26, 25, 24, 23, 22, 20, 16] {
                                     let hosts = (1u64 << (32 - m)).saturating_sub(2);
-                                    if ui.selectable_value(&mut self.selected_netmask, m, format!("/{} ({} hosts)", m, hosts)).clicked() {
+                                    if ui
+                                        .selectable_value(
+                                            &mut self.selected_netmask,
+                                            m,
+                                            format!("/{} ({} hosts)", m, hosts),
+                                        )
+                                        .clicked()
+                                    {
                                         changed = true;
                                     }
                                 }
@@ -513,14 +556,24 @@ impl eframe::App for HappyIpScannerApp {
 
                 // Start / Stop Button
                 if !self.is_scanning {
-                    let start_btn = egui::Button::new(RichText::new(" ▶ Start ").strong().size(14.0).color(Color32::WHITE))
-                        .fill(Color32::from_rgb(39, 174, 96));
+                    let start_btn = egui::Button::new(
+                        RichText::new(" ▶ Start ")
+                            .strong()
+                            .size(14.0)
+                            .color(Color32::WHITE),
+                    )
+                    .fill(Color32::from_rgb(39, 174, 96));
                     if ui.add(start_btn).clicked() {
                         self.start_scan();
                     }
                 } else {
-                    let stop_btn = egui::Button::new(RichText::new(" ⏹ Stop ").strong().size(14.0).color(Color32::WHITE))
-                        .fill(Color32::from_rgb(192, 57, 43));
+                    let stop_btn = egui::Button::new(
+                        RichText::new(" ⏹ Stop ")
+                            .strong()
+                            .size(14.0)
+                            .color(Color32::WHITE),
+                    )
+                    .fill(Color32::from_rgb(192, 57, 43));
                     if ui.add(stop_btn).clicked() {
                         self.stop_scan();
                     }
@@ -538,11 +591,15 @@ impl eframe::App for HappyIpScannerApp {
                 ui.label(RichText::new(&self.status_message).strong());
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let open_ports_count: usize = self.results.iter().map(|r| r.open_ports.len()).sum();
-                    ui.label(RichText::new(format!(
-                        "Alive: {} | Ports Open: {} | Total: {}",
-                        self.alive_count, open_ports_count, self.scanned_count
-                    )).weak());
+                    let open_ports_count: usize =
+                        self.results.iter().map(|r| r.open_ports.len()).sum();
+                    ui.label(
+                        RichText::new(format!(
+                            "Alive: {} | Ports Open: {} | Total: {}",
+                            self.alive_count, open_ports_count, self.scanned_count
+                        ))
+                        .weak(),
+                    );
 
                     let progress_bar = egui::ProgressBar::new(self.scan_progress)
                         .show_percentage()
@@ -558,25 +615,48 @@ impl eframe::App for HappyIpScannerApp {
             // Search & Filter Toolbar
             ui.horizontal(|ui| {
                 ui.label("🔍 Filter:");
-                ui.add(egui::TextEdit::singleline(&mut self.filter_text).hint_text("Search IP, hostname, vendor...").desired_width(200.0));
+                ui.add(
+                    egui::TextEdit::singleline(&mut self.filter_text)
+                        .hint_text("Search IP, hostname, vendor...")
+                        .desired_width(200.0),
+                );
 
                 ui.checkbox(&mut self.filter_alive_only, "Show alive only");
 
-                let filtered_count = self.results.iter().filter(|r| {
-                    if self.filter_alive_only && !r.is_alive {
-                        return false;
-                    }
-                    if self.filter_text.is_empty() {
-                        return true;
-                    }
-                    let query = self.filter_text.to_lowercase();
-                    r.ip.to_string().contains(&query)
-                        || r.hostname.as_deref().unwrap_or("").to_lowercase().contains(&query)
-                        || r.vendor.as_deref().unwrap_or("").to_lowercase().contains(&query)
-                        || r.open_ports.iter().any(|p| p.to_string().contains(&query))
-                }).count();
+                let filtered_count = self
+                    .results
+                    .iter()
+                    .filter(|r| {
+                        if self.filter_alive_only && !r.is_alive {
+                            return false;
+                        }
+                        if self.filter_text.is_empty() {
+                            return true;
+                        }
+                        let query = self.filter_text.to_lowercase();
+                        r.ip.to_string().contains(&query)
+                            || r.hostname
+                                .as_deref()
+                                .unwrap_or("")
+                                .to_lowercase()
+                                .contains(&query)
+                            || r.vendor
+                                .as_deref()
+                                .unwrap_or("")
+                                .to_lowercase()
+                                .contains(&query)
+                            || r.open_ports.iter().any(|p| p.to_string().contains(&query))
+                    })
+                    .count();
 
-                ui.label(RichText::new(format!("Showing {} of {} results", filtered_count, self.results.len())).weak());
+                ui.label(
+                    RichText::new(format!(
+                        "Showing {} of {} results",
+                        filtered_count,
+                        self.results.len()
+                    ))
+                    .weak(),
+                );
             });
 
             ui.add_space(4.0);
@@ -587,14 +667,14 @@ impl eframe::App for HappyIpScannerApp {
                 .striped(true)
                 .resizable(true)
                 .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                .column(Column::exact(65.0))   // Status
+                .column(Column::exact(65.0)) // Status
                 .column(Column::initial(120.0).at_least(100.0)) // IP
-                .column(Column::initial(70.0).at_least(50.0))   // Ping
+                .column(Column::initial(70.0).at_least(50.0)) // Ping
                 .column(Column::initial(160.0).at_least(100.0)) // Hostname
-                .column(Column::initial(110.0).at_least(70.0))  // Ports
+                .column(Column::initial(110.0).at_least(70.0)) // Ports
                 .column(Column::initial(130.0).at_least(100.0)) // MAC
                 .column(Column::initial(140.0).at_least(100.0)) // Vendor
-                .column(Column::remainder());                    // Web Title / Banner
+                .column(Column::remainder()); // Web Title / Banner
 
             table
                 .header(24.0, |mut header| {
@@ -655,7 +735,8 @@ impl eframe::App for HappyIpScannerApp {
                     let filter_alive = self.filter_alive_only;
                     let filter_query = self.filter_text.to_lowercase();
 
-                    let matching_indices: Vec<usize> = self.results
+                    let matching_indices: Vec<usize> = self
+                        .results
                         .iter()
                         .enumerate()
                         .filter_map(|(idx, r)| {
@@ -664,9 +745,19 @@ impl eframe::App for HappyIpScannerApp {
                             }
                             if !filter_query.is_empty() {
                                 let matches = r.ip.to_string().contains(&filter_query)
-                                    || r.hostname.as_deref().unwrap_or("").to_lowercase().contains(&filter_query)
-                                    || r.vendor.as_deref().unwrap_or("").to_lowercase().contains(&filter_query)
-                                    || r.open_ports.iter().any(|p| p.to_string().contains(&filter_query));
+                                    || r.hostname
+                                        .as_deref()
+                                        .unwrap_or("")
+                                        .to_lowercase()
+                                        .contains(&filter_query)
+                                    || r.vendor
+                                        .as_deref()
+                                        .unwrap_or("")
+                                        .to_lowercase()
+                                        .contains(&filter_query)
+                                    || r.open_ports
+                                        .iter()
+                                        .any(|p| p.to_string().contains(&filter_query));
                                 if !matches {
                                     return None;
                                 }
@@ -682,12 +773,21 @@ impl eframe::App for HappyIpScannerApp {
                             row.col(|ui| {
                                 if r.is_alive {
                                     if !r.open_ports.is_empty() {
-                                        ui.label(RichText::new("● ALIVE").color(Color32::from_rgb(46, 204, 113)));
+                                        ui.label(
+                                            RichText::new("● ALIVE")
+                                                .color(Color32::from_rgb(46, 204, 113)),
+                                        );
                                     } else {
-                                        ui.label(RichText::new("● ALIVE").color(Color32::from_rgb(52, 152, 219)));
+                                        ui.label(
+                                            RichText::new("● ALIVE")
+                                                .color(Color32::from_rgb(52, 152, 219)),
+                                        );
                                     }
                                 } else {
-                                    ui.label(RichText::new("○ DEAD").color(Color32::from_rgb(231, 76, 60)));
+                                    ui.label(
+                                        RichText::new("○ DEAD")
+                                            .color(Color32::from_rgb(231, 76, 60)),
+                                    );
                                 }
                             });
 
@@ -710,7 +810,10 @@ impl eframe::App for HappyIpScannerApp {
                                         for &port in &r.open_ports {
                                             let proto = if port == 443 { "https" } else { "http" };
                                             let url = format!("{}://{}:{}", proto, r.ip, port);
-                                            if ui.button(format!("Open in Browser ({})", url)).clicked() {
+                                            if ui
+                                                .button(format!("Open in Browser ({})", url))
+                                                .clicked()
+                                            {
                                                 let _ = open::that(&url);
                                                 ui.close_menu();
                                             }
@@ -738,12 +841,17 @@ impl eframe::App for HappyIpScannerApp {
                                 if r.open_ports.is_empty() {
                                     ui.label(RichText::new("-").weak());
                                 } else {
-                                    let text = r.open_ports
+                                    let text = r
+                                        .open_ports
                                         .iter()
                                         .map(|p| p.to_string())
                                         .collect::<Vec<_>>()
                                         .join(", ");
-                                    ui.label(RichText::new(text).color(Color32::from_rgb(46, 204, 113)).strong());
+                                    ui.label(
+                                        RichText::new(text)
+                                            .color(Color32::from_rgb(46, 204, 113))
+                                            .strong(),
+                                    );
                                 }
                             });
 

@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
 use crate::engine::pinger::PingMethod;
-use crate::engine::scanner::ScanOptions;
 use crate::engine::port_scanner::parse_ports;
+use crate::engine::scanner::ScanOptions;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ScannerPreferences {

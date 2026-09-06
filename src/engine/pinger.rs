@@ -1,8 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PingMethod {
@@ -80,7 +80,13 @@ pub async fn system_icmp_ping(ip: IpAddr, timeout_duration: Duration) -> PingRes
 
     #[cfg(target_os = "windows")]
     let output = tokio::process::Command::new("ping")
-        .args(["-n", "1", "-w", &timeout_duration.as_millis().to_string(), &ip.to_string()])
+        .args([
+            "-n",
+            "1",
+            "-w",
+            &timeout_duration.as_millis().to_string(),
+            &ip.to_string(),
+        ])
         .output()
         .await;
 

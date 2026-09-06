@@ -13,8 +13,14 @@ pub fn parse_ports(port_str: &str) -> Vec<u16> {
         }
 
         if let Some((start_s, end_s)) = part.split_once('-') {
-            if let (Ok(start), Ok(end)) = (start_s.trim().parse::<u16>(), end_s.trim().parse::<u16>()) {
-                let (min, max) = if start <= end { (start, end) } else { (end, start) };
+            if let (Ok(start), Ok(end)) =
+                (start_s.trim().parse::<u16>(), end_s.trim().parse::<u16>())
+            {
+                let (min, max) = if start <= end {
+                    (start, end)
+                } else {
+                    (end, start)
+                };
                 for p in min..=max {
                     ports.push(p);
                 }
@@ -45,7 +51,10 @@ pub fn format_ports(ports: &[u16]) -> String {
 /// Check if a single TCP port is open with timeout
 pub async fn check_port(ip: IpAddr, port: u16, timeout_duration: Duration) -> bool {
     let addr = SocketAddr::new(ip, port);
-    matches!(timeout(timeout_duration, TcpStream::connect(addr)).await, Ok(Ok(_)))
+    matches!(
+        timeout(timeout_duration, TcpStream::connect(addr)).await,
+        Ok(Ok(_))
+    )
 }
 
 /// Scan a list of ports concurrently for a given IP address
@@ -102,7 +111,10 @@ mod tests {
     #[test]
     fn test_parse_ports() {
         assert_eq!(parse_ports("80, 443, 80"), vec![80, 443]);
-        assert_eq!(parse_ports("8000-8003, 22"), vec![22, 8000, 8001, 8002, 8003]);
+        assert_eq!(
+            parse_ports("8000-8003, 22"),
+            vec![22, 8000, 8001, 8002, 8003]
+        );
         assert_eq!(parse_ports(" 80 , 443 "), vec![80, 443]);
     }
 }

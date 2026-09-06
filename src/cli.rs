@@ -4,19 +4,24 @@ use comfy_table::presets::UTF8_FULL;
 use comfy_table::{Cell, Color, ContentArrangement, Table};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::net::IpAddr;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::Duration;
 use tokio::sync::mpsc;
 
 use crate::engine::ip_range::{detect_local_range, generate_random_ips, parse_target};
 use crate::engine::pinger::PingMethod;
 use crate::engine::port_scanner::parse_ports;
-use crate::engine::scanner::{run_scan, HostResult, ScanEvent, ScanOptions};
+use crate::engine::scanner::{HostResult, ScanEvent, ScanOptions, run_scan};
 use crate::export::{export_to_csv, export_to_json, export_to_txt};
 
 #[derive(Parser, Debug)]
-#[command(name = "happy-ip-scanner", author, version, about = "A fast, friendly, cross-platform IP and port scanner in Rust (Angry IP Scanner port)")]
+#[command(
+    name = "happy-ip-scanner",
+    author,
+    version,
+    about = "A fast, friendly, cross-platform IP and port scanner in Rust (Angry IP Scanner port)"
+)]
 pub struct CliArgs {
     /// Target IP, CIDR (e.g. 192.168.1.0/24), or range (e.g. 192.168.1.1-254)
     #[arg(value_name = "TARGET")]
@@ -79,7 +84,10 @@ pub async fn run_cli(args: CliArgs) -> Result<(), Box<dyn std::error::Error>> {
     } else if let Some(target) = &args.target {
         parse_target(target)?
     } else if let Some((_local, start, end)) = detect_local_range() {
-        println!("ℹ️  No target provided. Auto-detected local subnet: {}-{}", start, end);
+        println!(
+            "ℹ️  No target provided. Auto-detected local subnet: {}-{}",
+            start, end
+        );
         crate::engine::ip_range::generate_range_v4(start, end)
     } else {
         return Err("No target specified. Provide a target (e.g. 192.168.1.0/24) or run without arguments for GUI.".into());
@@ -226,7 +234,10 @@ fn print_table(results: &[&HostResult]) {
             Cell::new("○ DEAD").fg(Color::Red)
         };
 
-        let ping_str = r.ping_ms.map(|p| format!("{:.1}ms", p)).unwrap_or_else(|| "-".into());
+        let ping_str = r
+            .ping_ms
+            .map(|p| format!("{:.1}ms", p))
+            .unwrap_or_else(|| "-".into());
         let host_str = r.hostname.as_deref().unwrap_or("-");
         let ports_str = if r.open_ports.is_empty() {
             "-".to_string()

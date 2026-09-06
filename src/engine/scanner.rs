@@ -1,13 +1,13 @@
-use std::net::IpAddr;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::{Duration, Instant};
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
+use std::net::IpAddr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration, Instant};
 use tokio::sync::Semaphore;
+use tokio::sync::mpsc;
 
 use super::arp::lookup_mac;
-use super::pinger::{ping_host, PingMethod};
+use super::pinger::{PingMethod, ping_host};
 use super::port_scanner::scan_ports;
 use super::vendor::lookup_vendor;
 use super::web_banner::fetch_web_title;
@@ -54,10 +54,20 @@ impl Default for ScanOptions {
 
 #[derive(Debug, Clone)]
 pub enum ScanEvent {
-    Started { total_ips: usize },
+    Started {
+        total_ips: usize,
+    },
     Host(Box<HostResult>),
-    Progress { scanned: usize, total: usize, alive: usize },
-    Finished { total_scanned: usize, total_alive: usize, elapsed_secs: f64 },
+    Progress {
+        scanned: usize,
+        total: usize,
+        alive: usize,
+    },
+    Finished {
+        total_scanned: usize,
+        total_alive: usize,
+        elapsed_secs: f64,
+    },
     Stopped,
 }
 
@@ -85,11 +95,9 @@ pub async fn scan_single_host(ip: IpAddr, options: &ScanOptions) -> HostResult {
 
     // 3. Hostname Reverse DNS
     let hostname = if is_alive && options.resolve_hostname {
-        tokio::task::spawn_blocking(move || {
-            dns_lookup::lookup_addr(&ip).ok()
-        })
-        .await
-        .unwrap_or(None)
+        tokio::task::spawn_blocking(move || dns_lookup::lookup_addr(&ip).ok())
+            .await
+            .unwrap_or(None)
     } else {
         None
     };
@@ -97,7 +105,10 @@ pub async fn scan_single_host(ip: IpAddr, options: &ScanOptions) -> HostResult {
     // 4. MAC Address & Vendor
     let (mac_address, vendor) = if is_alive && options.lookup_mac {
         let mac = lookup_mac(ip).await;
-        let v = mac.as_deref().and_then(lookup_vendor).map(|s| s.to_string());
+        let v = mac
+            .as_deref()
+            .and_then(lookup_vendor)
+            .map(|s| s.to_string());
         (mac, v)
     } else {
         (None, None)
@@ -106,7 +117,9 @@ pub async fn scan_single_host(ip: IpAddr, options: &ScanOptions) -> HostResult {
     // 5. Web Title / Banner
     let web_title = if is_alive && options.fetch_web_title {
         // Test port 80, 443, 8080 or the first open web-like port
-        let web_port = open_ports.iter().find(|&&p| p == 80 || p == 8080 || p == 3000 || p == 5000 || p == 8000);
+        let web_port = open_ports
+            .iter()
+            .find(|&&p| p == 80 || p == 8080 || p == 3000 || p == 5000 || p == 8000);
         if let Some(&p) = web_port {
             fetch_web_title(ip, p, Duration::from_millis(options.timeout_ms.min(1500))).await
         } else {
@@ -137,7 +150,9 @@ pub async fn run_scan(
     event_sender: mpsc::Sender<ScanEvent>,
 ) {
     let total = ips.len();
-    let _ = event_sender.send(ScanEvent::Started { total_ips: total }).await;
+    let _ = event_sender
+        .send(ScanEvent::Started { total_ips: total })
+        .await;
 
     let semaphore = Arc::new(Semaphore::new(options.threads.max(1)));
     let scanned_counter = Arc::new(std::sync::atomic::AtomicUsize::new(0));
@@ -180,11 +195,13 @@ pub async fn run_scan(
             let current_scanned = scanned.fetch_add(1, Ordering::Relaxed) + 1;
 
             let _ = tx.send(ScanEvent::Host(Box::new(result))).await;
-            let _ = tx.send(ScanEvent::Progress {
-                scanned: current_scanned,
-                total,
-                alive: current_alive,
-            }).await;
+            let _ = tx
+                .send(ScanEvent::Progress {
+                    scanned: current_scanned,
+                    total,
+                    alive: current_alive,
+                })
+                .await;
         }));
     }
 
@@ -195,10 +212,12 @@ pub async fn run_scan(
     if is_cancelled.load(Ordering::Relaxed) {
         let _ = event_sender.send(ScanEvent::Stopped).await;
     } else {
-        let _ = event_sender.send(ScanEvent::Finished {
-            total_scanned: scanned_counter.load(Ordering::Relaxed),
-            total_alive: alive_counter.load(Ordering::Relaxed),
-            elapsed_secs: start_time.elapsed().as_secs_f64(),
-        }).await;
+        let _ = event_sender
+            .send(ScanEvent::Finished {
+                total_scanned: scanned_counter.load(Ordering::Relaxed),
+                total_alive: alive_counter.load(Ordering::Relaxed),
+                elapsed_secs: start_time.elapsed().as_secs_f64(),
+            })
+            .await;
     }
 }

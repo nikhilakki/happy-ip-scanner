@@ -4,7 +4,7 @@ mod export;
 mod gui;
 
 use clap::Parser;
-use cli::{run_cli, CliArgs};
+use cli::{CliArgs, run_cli};
 use gui::run_gui;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -31,8 +31,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .build()
             .expect("Failed to initialize Tokio runtime");
 
-        rt.block_on(async {
-            run_cli(cli_args).await
-        })
+        rt.block_on(async { run_cli(cli_args).await })
     }
 }

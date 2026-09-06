@@ -1,7 +1,7 @@
+use crate::engine::scanner::HostResult;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
-use crate::engine::scanner::HostResult;
 
 pub fn export_to_csv<P: AsRef<Path>>(results: &[HostResult], path: P) -> Result<(), String> {
     let file = File::create(path).map_err(|e| e.to_string())?;
@@ -56,22 +56,41 @@ pub fn export_to_json<P: AsRef<Path>>(results: &[HostResult], path: P) -> Result
     Ok(())
 }
 
-pub fn export_to_txt<P: AsRef<Path>>(results: &[HostResult], path: P, alive_only: bool) -> Result<(), String> {
+pub fn export_to_txt<P: AsRef<Path>>(
+    results: &[HostResult],
+    path: P,
+    alive_only: bool,
+) -> Result<(), String> {
     let mut file = File::create(path).map_err(|e| e.to_string())?;
 
     for r in results {
         if alive_only && !r.is_alive {
             continue;
         }
-        let ping_str = r.ping_ms.map(|p| format!(" [ping: {:.1}ms]", p)).unwrap_or_default();
-        let host_str = r.hostname.as_ref().map(|h| format!(" ({})", h)).unwrap_or_default();
+        let ping_str = r
+            .ping_ms
+            .map(|p| format!(" [ping: {:.1}ms]", p))
+            .unwrap_or_default();
+        let host_str = r
+            .hostname
+            .as_ref()
+            .map(|h| format!(" ({})", h))
+            .unwrap_or_default();
         let ports_str = if !r.open_ports.is_empty() {
-            format!(" [ports: {}]", r.open_ports.iter().map(|p| p.to_string()).collect::<Vec<_>>().join(","))
+            format!(
+                " [ports: {}]",
+                r.open_ports
+                    .iter()
+                    .map(|p| p.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            )
         } else {
             String::new()
         };
 
-        writeln!(file, "{}{}{}{}", r.ip, host_str, ping_str, ports_str).map_err(|e| e.to_string())?;
+        writeln!(file, "{}{}{}{}", r.ip, host_str, ping_str, ports_str)
+            .map_err(|e| e.to_string())?;
     }
 
     Ok(())
