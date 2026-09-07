@@ -40,7 +40,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             archive: zip
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -124,7 +124,7 @@ jobs:
           cat "${asset}.sha256"
           ls -l
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: happy-ip-scanner-${{ matrix.target }}
           path: dist/*
@@ -140,9 +140,9 @@ jobs:
     steps:
       # Checkout runs first: it cleans the workspace, which would delete the
       # downloaded artifacts if it ran after them.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -170,7 +170,7 @@ jobs:
           ls -l
           sha256sum -c -- *.sha256
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           body_path: release-notes.md
