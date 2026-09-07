@@ -19,6 +19,7 @@ This document tracks planned features, enhancements, and backlog items for **Hap
   - [ ] Create macOS `.app` bundle and `.dmg` installer with custom app icon.
   - [ ] Create Linux `.deb`, `.rpm`, and AppImage packaging.
   - [ ] Create Windows `.msi` / standalone `.exe` installer.
+  - [ ] Hide the Windows console window in GUI mode while keeping CLI output working (`windows_subsystem = "windows"` plus `AttachConsole` when started from a terminal).
   - [ ] Code-sign and notarize the macOS release binaries so Gatekeeper does not block them.
 
 ---

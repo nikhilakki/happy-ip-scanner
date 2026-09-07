@@ -101,7 +101,7 @@ Get-FileHash .\happy-ip-scanner-0.1.0-x86_64-pc-windows-msvc.zip -Algorithm SHA2
 Expand-Archive .\happy-ip-scanner-0.1.0-x86_64-pc-windows-msvc.zip -DestinationPath .
 ```
 
-Compare the printed hash with the contents of the matching `.sha256` file, then move `happy-ip-scanner.exe` to a folder on your `PATH`. Double-clicking the executable opens the desktop GUI.
+Compare the printed hash with the contents of the matching `.sha256` file, then move `happy-ip-scanner.exe` to a folder on your `PATH`. Double-clicking the executable opens the desktop GUI, with a console window behind it; the executable is built for the console subsystem so that CLI output works in PowerShell and `cmd`.
 
 ### Prerequisites
 
