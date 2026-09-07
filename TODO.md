@@ -16,7 +16,7 @@ This document tracks planned features, enhancements, and backlog items for **Hap
   - [ ] Save commonly scanned subnets and port lists as named presets (e.g., "Home Network", "Office Servers", "Web Services").
   - [ ] Quick-select dropdown in top toolbar for saved profiles.
 - [ ] **App Packaging & Bundling**:
-  - [ ] Create macOS `.app` bundle and `.dmg` installer with custom app icon.
+  - [ ] Create macOS `.app` bundle and `.dmg` installer using the icon in `docs/` (`icon-512.png`).
   - [ ] Create Linux `.deb`, `.rpm`, and AppImage packaging.
   - [ ] Create Windows `.msi` / standalone `.exe` installer.
   - [ ] Hide the Windows console window in GUI mode while keeping CLI output working (`windows_subsystem = "windows"` plus `AttachConsole` when started from a terminal).

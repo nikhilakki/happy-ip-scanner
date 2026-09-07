@@ -1,4 +1,6 @@
-# ⚡ Happy IP Scanner
+<h1 align="center">
+  <img src="docs/banner.png" alt="Happy IP Scanner: fast, friendly network scanning for your LAN" width="820">
+</h1>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.88%2B-orange.svg)](https://www.rust-lang.org)
@@ -299,6 +301,18 @@ Before you start, please read:
 - [SECURITY.md](SECURITY.md) for how to report a vulnerability privately (please do not open a public issue)
 - [TODO.md](TODO.md) for the roadmap and open items
 - [CHANGELOG.md](CHANGELOG.md) for notable changes in each release
+
+---
+
+## 🎨 Logo & Mascot
+
+<img src="docs/mascot.png" alt="The Happy IP Scanner mascot: a round green creature laughing and holding a magnifying glass" width="150" align="left">
+
+The logo is a magnifying glass with a laughing face in the lens, and the mascot carries the same glass. The palette is borrowed from the Angry IP Scanner application icon: vivid green, a blue lightning bolt, and near-black outlines. The shapes are original.
+
+The full palette, every asset, and how to re-export the raster files are documented in [docs/BRAND.md](docs/BRAND.md). The artwork is MIT licensed along with the rest of the project.
+
+<br clear="left">
 
 ---
 

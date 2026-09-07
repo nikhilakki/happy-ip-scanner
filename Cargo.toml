@@ -11,7 +11,7 @@ homepage = "https://github.com/nikhilakki/happy-ip-scanner"
 readme = "README.md"
 keywords = ["network", "scanner", "ip", "port-scanner", "egui"]
 categories = ["command-line-utilities", "network-programming", "gui"]
-exclude = [".github/", ".editorconfig", "TODO.md"]
+exclude = [".github/", "docs/", ".editorconfig", "TODO.md"]
 
 [dependencies]
 # Async Runtime & Networking
