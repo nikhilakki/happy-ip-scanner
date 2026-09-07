@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-07
+
+First public release. The entries under Fixed cover problems corrected during
+development, before any release was published.
+
 ### Added
 
 - Desktop GUI (egui/eframe) with the familiar Angry IP Scanner layout: auto-detected local subnet, netmask dropdown (/30 to /16), Start/Stop control, and a live-updating results table with color-coded status.
@@ -37,4 +42,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TCP liveness probes run concurrently and stop at the first answer, so a dead host costs one timeout instead of one per port.
 - Linux build failed because the ARP cache reader needed the tokio `fs` feature; it is now enabled.
 
-[Unreleased]: https://github.com/nikhilakki/happy-ip-scanner/commits/main
+[Unreleased]: https://github.com/nikhilakki/happy-ip-scanner/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/nikhilakki/happy-ip-scanner/releases/tag/v0.1.0

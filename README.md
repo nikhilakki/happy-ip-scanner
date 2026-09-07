@@ -65,11 +65,43 @@ Only scan networks and hosts you own or have explicit permission to test. Unauth
 
 Binaries for macOS (Apple Silicon and Intel), Linux (x86_64 and arm64), and Windows x86_64 are attached to every tagged release on the [releases page](https://github.com/nikhilakki/happy-ip-scanner/releases). Each archive contains the binary, README, LICENSE, CHANGELOG, and THIRD_PARTY_LICENSES, and ships with a `.sha256` checksum so you can verify the download. The Linux binaries are built on Ubuntu 22.04 and need glibc 2.35 or newer plus the GTK 3 runtime libraries.
 
-On macOS, Gatekeeper may block the unsigned binary after download. Remove the quarantine attribute to run it:
+#### Install on macOS or Linux
+
+Replace the target triple with the one matching your machine: `aarch64-apple-darwin` (Apple Silicon), `x86_64-apple-darwin` (Intel Mac), `x86_64-unknown-linux-gnu`, or `aarch64-unknown-linux-gnu`.
 
 ```bash
-xattr -d com.apple.quarantine ./happy-ip-scanner
+VERSION=0.1.0
+TARGET=aarch64-apple-darwin
+BASE="https://github.com/nikhilakki/happy-ip-scanner/releases/download/v${VERSION}"
+ARCHIVE="happy-ip-scanner-${VERSION}-${TARGET}.tar.gz"
+
+curl -LO "${BASE}/${ARCHIVE}"
+curl -LO "${BASE}/${ARCHIVE}.sha256"
+shasum -a 256 -c "${ARCHIVE}.sha256"        # use sha256sum -c on Linux
+
+tar -xzf "${ARCHIVE}"
+sudo install -m 755 "happy-ip-scanner-${VERSION}-${TARGET}/happy-ip-scanner" /usr/local/bin/
+happy-ip-scanner --version
 ```
+
+On macOS, Gatekeeper blocks the unsigned binary the first time you run it. Clear the quarantine attribute on the extracted binary before installing it:
+
+```bash
+xattr -d com.apple.quarantine "happy-ip-scanner-${VERSION}-${TARGET}/happy-ip-scanner"
+```
+
+If `/usr/local/bin` is not on your `PATH`, or you would rather not use `sudo`, install to `~/.local/bin` instead and add that directory to your `PATH`.
+
+#### Install on Windows
+
+Download `happy-ip-scanner-<version>-x86_64-pc-windows-msvc.zip` from the releases page, verify it, and extract it:
+
+```powershell
+Get-FileHash .\happy-ip-scanner-0.1.0-x86_64-pc-windows-msvc.zip -Algorithm SHA256
+Expand-Archive .\happy-ip-scanner-0.1.0-x86_64-pc-windows-msvc.zip -DestinationPath .
+```
+
+Compare the printed hash with the contents of the matching `.sha256` file, then move `happy-ip-scanner.exe` to a folder on your `PATH`. Double-clicking the executable opens the desktop GUI.
 
 ### Prerequisites
 

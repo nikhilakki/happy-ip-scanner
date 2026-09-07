@@ -4,12 +4,12 @@ Happy IP Scanner talks to every host you point it at and parses whatever comes b
 
 ## Supported versions
 
-No release has been tagged yet. Until the first release (`v0.1.0`), the `main` branch is the only supported version. After that, only the latest release and `main` receive security fixes; older releases will not be patched.
+Only the latest tagged release and the `main` branch receive security fixes. Older releases are not patched; upgrade to the latest release instead.
 
 | Version | Supported |
 | ------- | --------- |
-| `main` (unreleased) | Yes |
-| Latest tagged release (once one exists) | Yes |
+| `main` | Yes |
+| Latest tagged release | Yes |
 | Older releases | No |
 
 ## Reporting a vulnerability
