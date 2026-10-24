@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Project logo, mascot, and README banner as SVG plus exported PNG icon sizes in `docs/`, with the palette, asset list, and regeneration steps documented in `docs/BRAND.md`.
 - Direct macOS download links and first-launch Gatekeeper instructions in the README and GitHub release notes, including the `xattr` command and Privacy & Security's Open Anyway option.
+- macOS DMG installers for Apple Silicon and Intel with a Finder-launchable `.app`, application icon, Applications shortcut, and SHA-256 checksums. The release workflow now builds these alongside the CLI archives.
 
 ## [0.1.0] - 2026-09-07
 

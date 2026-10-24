@@ -124,6 +124,14 @@ jobs:
           cat "${asset}.sha256"
           ls -l
 
+      - name: Package macOS desktop app
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TARGET: ${{ matrix.target }}
+        run: bash .github/scripts/package-macos.sh "target/${TARGET}/release/happy-ip-scanner" "${TARGET}" "${VERSION}" dist
+
       - uses: actions/upload-artifact@v4
         with:
           name: happy-ip-scanner-${{ matrix.target }}
@@ -165,17 +173,18 @@ jobs:
 
           ### macOS downloads and first launch
 
-          - [Apple Silicon (M-series)](https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/happy-ip-scanner-${version}-aarch64-apple-darwin.tar.gz)
-          - [Intel](https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/happy-ip-scanner-${version}-x86_64-apple-darwin.tar.gz)
+          - [Apple Silicon (M-series) desktop app](https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/happy-ip-scanner-${version}-aarch64-apple-darwin.dmg)
+          - [Intel desktop app](https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/happy-ip-scanner-${version}-x86_64-apple-darwin.dmg)
 
-          Verify the archive against its matching SHA-256 checksum and extract it. These binaries are not signed with an Apple Developer ID or notarized. To avoid the "developer cannot be verified" warning, open Terminal in the extracted folder and run before the first launch:
+          Open the DMG, drag **Happy IP Scanner.app** to **Applications**, then double-click the app to launch the GUI directly. Each DMG has a matching SHA-256 checksum. CLI tarballs remain available in the assets.
+
+          The app is not signed with an Apple Developer ID or notarized. If macOS blocks the first launch, use **System Settings > Privacy & Security > Open Anyway** and confirm, following [Apple's instructions](https://support.apple.com/en-us/102445). Alternatively, remove quarantine from this app once:
 
           \`\`\`bash
-          xattr -d com.apple.quarantine ./happy-ip-scanner
-          ./happy-ip-scanner
+          xattr -dr com.apple.quarantine "/Applications/Happy IP Scanner.app"
           \`\`\`
 
-          If \`xattr\` reports "No such xattr", the attribute is already absent; launch the binary normally. Alternatively, after a blocked launch, use **System Settings > Privacy & Security > Open Anyway** and confirm, following [Apple's instructions](https://support.apple.com/en-us/102445).
+          Then open **Happy IP Scanner** from Applications. If \`xattr\` reports "No such xattr", the attribute is already absent.
           EOF
           cat release-notes.md
 

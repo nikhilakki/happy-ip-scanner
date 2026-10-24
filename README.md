@@ -69,12 +69,26 @@ Binaries for macOS (Apple Silicon and Intel), Linux (x86_64 and arm64), and Wind
 
 #### Install on macOS
 
-Download the archive for your Mac from [the latest release](https://github.com/nikhilakki/happy-ip-scanner/releases/latest):
+Download the desktop app for your Mac from [the latest release](https://github.com/nikhilakki/happy-ip-scanner/releases/latest):
 
 | Mac | Download |
 |---|---|
-| Apple Silicon (M-series) | [aarch64-apple-darwin](https://github.com/nikhilakki/happy-ip-scanner/releases/download/v0.1.0/happy-ip-scanner-0.1.0-aarch64-apple-darwin.tar.gz) |
-| Intel | [x86_64-apple-darwin](https://github.com/nikhilakki/happy-ip-scanner/releases/download/v0.1.0/happy-ip-scanner-0.1.0-x86_64-apple-darwin.tar.gz) |
+| Apple Silicon (M-series) | [Download DMG](https://github.com/nikhilakki/happy-ip-scanner/releases/download/v0.1.0/happy-ip-scanner-0.1.0-aarch64-apple-darwin.dmg) |
+| Intel | [Download DMG](https://github.com/nikhilakki/happy-ip-scanner/releases/download/v0.1.0/happy-ip-scanner-0.1.0-x86_64-apple-darwin.dmg) |
+
+Open the DMG, drag **Happy IP Scanner.app** to **Applications**, then double-click the app to open the GUI directly. Each DMG ships with a `.sha256` checksum.
+
+The app is not signed with an Apple Developer ID or notarized. If macOS blocks the first launch, go to **System Settings > Privacy & Security > Open Anyway** and confirm, following [Apple's instructions](https://support.apple.com/en-us/102445). Alternatively, remove quarantine from this app once:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Happy IP Scanner.app"
+```
+
+Then open **Happy IP Scanner** from Applications. If `xattr` reports "No such xattr", the attribute is already absent.
+
+##### macOS command-line installation
+
+The `.tar.gz` archives remain available for terminal use.
 
 The binaries are not signed with an Apple Developer ID or notarized. After verifying the checksum and extracting the archive, remove the quarantine attribute from **this binary** before the first launch to avoid the "developer cannot be verified" warning. The commands below do this before installation. Use `TARGET=x86_64-apple-darwin` for an Intel Mac.
 
