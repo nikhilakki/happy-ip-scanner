@@ -67,9 +67,16 @@ Only scan networks and hosts you own or have explicit permission to test. Unauth
 
 Binaries for macOS (Apple Silicon and Intel), Linux (x86_64 and arm64), and Windows x86_64 are attached to every tagged release on the [releases page](https://github.com/nikhilakki/happy-ip-scanner/releases). Each archive contains the binary, README, LICENSE, CHANGELOG, and THIRD_PARTY_LICENSES, and ships with a `.sha256` checksum so you can verify the download. The Linux binaries are built on Ubuntu 22.04 and need glibc 2.35 or newer plus the GTK 3 runtime libraries.
 
-#### Install on macOS or Linux
+#### Install on macOS
 
-Replace the target triple with the one matching your machine: `aarch64-apple-darwin` (Apple Silicon), `x86_64-apple-darwin` (Intel Mac), `x86_64-unknown-linux-gnu`, or `aarch64-unknown-linux-gnu`.
+Download the archive for your Mac from [the latest release](https://github.com/nikhilakki/happy-ip-scanner/releases/latest):
+
+| Mac | Download |
+|---|---|
+| Apple Silicon (M-series) | [aarch64-apple-darwin](https://github.com/nikhilakki/happy-ip-scanner/releases/download/v0.1.0/happy-ip-scanner-0.1.0-aarch64-apple-darwin.tar.gz) |
+| Intel | [x86_64-apple-darwin](https://github.com/nikhilakki/happy-ip-scanner/releases/download/v0.1.0/happy-ip-scanner-0.1.0-x86_64-apple-darwin.tar.gz) |
+
+The binaries are not signed with an Apple Developer ID or notarized. After verifying the checksum and extracting the archive, remove the quarantine attribute from **this binary** before the first launch to avoid the "developer cannot be verified" warning. The commands below do this before installation. Use `TARGET=x86_64-apple-darwin` for an Intel Mac.
 
 ```bash
 VERSION=0.1.0
@@ -79,20 +86,46 @@ ARCHIVE="happy-ip-scanner-${VERSION}-${TARGET}.tar.gz"
 
 curl -LO "${BASE}/${ARCHIVE}"
 curl -LO "${BASE}/${ARCHIVE}.sha256"
-shasum -a 256 -c "${ARCHIVE}.sha256"        # use sha256sum -c on Linux
+shasum -a 256 -c "${ARCHIVE}.sha256"
 
+tar -xzf "${ARCHIVE}"
+# Browser downloads may be quarantined; skip this when the attribute is absent.
+if xattr -p com.apple.quarantine "happy-ip-scanner-${VERSION}-${TARGET}/happy-ip-scanner" >/dev/null 2>&1; then
+  xattr -d com.apple.quarantine "happy-ip-scanner-${VERSION}-${TARGET}/happy-ip-scanner"
+fi
+sudo install -m 755 "happy-ip-scanner-${VERSION}-${TARGET}/happy-ip-scanner" /usr/local/bin/
+happy-ip-scanner --version
+happy-ip-scanner                    # launch the desktop GUI
+```
+
+If you already extracted the download in Finder, open Terminal in the extracted folder and run:
+
+```bash
+xattr -d com.apple.quarantine ./happy-ip-scanner
+./happy-ip-scanner
+```
+
+If `xattr` reports "No such xattr", the binary is already free of that attribute. Alternatively, after a blocked launch, go to **System Settings > Privacy & Security > Open Anyway**, then confirm the launch, as described in [Apple's instructions](https://support.apple.com/en-us/102445).
+
+If `/usr/local/bin` is not on your `PATH`, or you would rather not use `sudo`, install to `~/.local/bin` instead and add that directory to your `PATH`.
+
+#### Install on Linux
+
+Use `TARGET=aarch64-unknown-linux-gnu` for Linux arm64.
+
+```bash
+VERSION=0.1.0
+TARGET=x86_64-unknown-linux-gnu
+BASE="https://github.com/nikhilakki/happy-ip-scanner/releases/download/v${VERSION}"
+ARCHIVE="happy-ip-scanner-${VERSION}-${TARGET}.tar.gz"
+
+curl -LO "${BASE}/${ARCHIVE}"
+curl -LO "${BASE}/${ARCHIVE}.sha256"
+sha256sum -c "${ARCHIVE}.sha256"
 tar -xzf "${ARCHIVE}"
 sudo install -m 755 "happy-ip-scanner-${VERSION}-${TARGET}/happy-ip-scanner" /usr/local/bin/
 happy-ip-scanner --version
 ```
-
-On macOS, Gatekeeper blocks the unsigned binary the first time you run it. Clear the quarantine attribute on the extracted binary before installing it:
-
-```bash
-xattr -d com.apple.quarantine "happy-ip-scanner-${VERSION}-${TARGET}/happy-ip-scanner"
-```
-
-If `/usr/local/bin` is not on your `PATH`, or you would rather not use `sudo`, install to `~/.local/bin` instead and add that directory to your `PATH`.
 
 #### Install on Windows
 
